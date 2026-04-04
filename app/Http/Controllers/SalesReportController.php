@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ProductBatch;
 use App\Models\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,24 @@ class SalesReportController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $topProducts = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->selectRaw('sale_items.product_name, SUM(sale_items.stock_quantity) as sold_quantity, SUM(sale_items.line_total) as total_amount')
+            ->whereDate('sales.sold_at', '>=', $from)
+            ->whereDate('sales.sold_at', '<=', $to)
+            ->groupBy('sale_items.product_name')
+            ->orderByDesc('sold_quantity')
+            ->limit(10)
+            ->get();
+
+        $expiringBatches = ProductBatch::with('product')
+            ->where('remaining_quantity', '>', 0)
+            ->whereNotNull('expires_at')
+            ->whereDate('expires_at', '<=', now()->addDays(10)->toDateString())
+            ->orderBy('expires_at')
+            ->limit(10)
+            ->get();
+
         return view('reports.sales', compact(
             'from',
             'to',
@@ -44,6 +63,8 @@ class SalesReportController extends Controller
             'todayTotal',
             'dailyTotals',
             'salesHistory',
+            'topProducts',
+            'expiringBatches',
         ));
     }
 }

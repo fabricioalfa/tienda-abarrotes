@@ -57,4 +57,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Sale::class);
     }
+
+    public function openedCashRegisters(): HasMany
+    {
+        return $this->hasMany(CashRegister::class, 'opened_by');
+    }
+
+    public function closedCashRegisters(): HasMany
+    {
+        return $this->hasMany(CashRegister::class, 'closed_by');
+    }
 }

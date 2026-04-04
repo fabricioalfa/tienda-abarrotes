@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Services\SalesService;
@@ -34,8 +35,9 @@ class SaleController extends Controller
 
         $todaySales = Sale::whereDate('sold_at', now()->toDateString())->count();
         $todayTotal = (float) Sale::whereDate('sold_at', now()->toDateString())->sum('total');
+        $currentRegister = CashRegister::current();
 
-        return view('sales.index', compact('sales', 'q', 'from', 'to', 'todaySales', 'todayTotal'));
+        return view('sales.index', compact('sales', 'q', 'from', 'to', 'todaySales', 'todayTotal', 'currentRegister'));
     }
 
     public function create()
@@ -44,8 +46,9 @@ class SaleController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
+        $currentRegister = CashRegister::current();
 
-        return view('sales.create', compact('products'));
+        return view('sales.create', compact('products', 'currentRegister'));
     }
 
     public function store(Request $request)
@@ -54,13 +57,30 @@ class SaleController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'items.*.pricing_mode' => ['nullable', 'in:standard,package'],
+            'customer_name' => ['nullable', 'string', 'max:255'],
+            'customer_phone' => ['nullable', 'string', 'max:255'],
+            'payment_method' => ['required', 'in:cash,qr,mixed,credit'],
+            'cash_amount' => ['nullable', 'numeric', 'min:0'],
+            'qr_amount' => ['nullable', 'numeric', 'min:0'],
+            'cash_received' => ['nullable', 'numeric', 'min:0'],
+            'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
         $sale = $this->salesService->createSale(
             user: $request->user(),
             rawItems: $data['items'],
-            notes: $data['notes'] ?? null,
+            saleData: [
+                'customer_name' => $data['customer_name'] ?? null,
+                'customer_phone' => $data['customer_phone'] ?? null,
+                'payment_method' => $data['payment_method'],
+                'cash_amount' => $data['cash_amount'] ?? 0,
+                'qr_amount' => $data['qr_amount'] ?? 0,
+                'cash_received' => $data['cash_received'] ?? 0,
+                'discount_amount' => $data['discount_amount'] ?? 0,
+                'notes' => $data['notes'] ?? null,
+            ],
         );
 
         return redirect()
@@ -70,7 +90,7 @@ class SaleController extends Controller
 
     public function show(Sale $sale)
     {
-        $sale->load(['items.product', 'user']);
+        $sale->load(['items.product', 'user', 'cashRegister']);
 
         return view('sales.show', compact('sale'));
     }

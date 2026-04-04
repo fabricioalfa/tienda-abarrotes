@@ -82,6 +82,21 @@
                     </div>
 
                     <div>
+                        <label class="field-label">Costo unitario</label>
+                        <input type="number" step="0.01" min="0" name="unit_cost" value="{{ old('unit_cost') }}" class="field-input" placeholder="Costo de compra">
+                    </div>
+
+                    <div>
+                        <label class="field-label">Fecha de vencimiento</label>
+                        <input type="date" name="expires_at" value="{{ old('expires_at') }}" class="field-input">
+                    </div>
+
+                    <div>
+                        <label class="field-label">Proveedor</label>
+                        <input type="text" name="supplier_name" value="{{ old('supplier_name') }}" class="field-input" placeholder="Proveedor de esta compra">
+                    </div>
+
+                    <div>
                         <label class="field-label">Referencia (opcional)</label>
                         <input type="text" name="reference" value="{{ old('reference') }}" class="field-input" placeholder="Factura, guía, lote...">
                     </div>
@@ -166,6 +181,16 @@
                     </div>
 
                     <div>
+                        <label class="field-label">Costo unitario (si aumenta stock)</label>
+                        <input type="number" step="0.01" min="0" name="unit_cost" value="{{ old('unit_cost') }}" class="field-input">
+                    </div>
+
+                    <div>
+                        <label class="field-label">Vencimiento (si aumenta stock)</label>
+                        <input type="date" name="expires_at" value="{{ old('expires_at') }}" class="field-input">
+                    </div>
+
+                    <div>
                         <label class="field-label">Motivo</label>
                         <input type="text" name="reason" value="{{ old('reason') }}" class="field-input" placeholder="Merma por vencimiento" required>
                     </div>
@@ -214,7 +239,7 @@
                                     <td class="table-cell">S/ {{ number_format((float) $product->price, 2) }}</td>
                                     <td class="table-cell">
                                         <span class="{{ (float) $product->stock <= 0 ? 'badge-warning' : 'badge-success' }}">
-                                            {{ $product->stock }} {{ $product->stockUnitLabel() }}
+                                            {{ $product->stockBreakdownLabel() }}
                                         </span>
                                     </td>
                                     <td class="table-cell">{{ $product->saleTypeLabel() }}</td>
@@ -276,6 +301,12 @@
                                     <td class="table-cell">
                                         <p>{{ $movement->typeLabel() }}</p>
                                         <p class="text-xs text-slate-500">{{ $movement->directionLabel() }}</p>
+                                        @if ($movement->unit_cost)
+                                            <p class="mt-1 text-xs text-slate-500">Costo: S/ {{ number_format((float) $movement->unit_cost, 2) }}</p>
+                                        @endif
+                                        @if ($movement->expires_at)
+                                            <p class="text-xs text-slate-500">Vence: {{ $movement->expires_at->format('d/m/Y') }}</p>
+                                        @endif
                                         @if ($movement->reason)
                                             <p class="mt-1 text-xs text-slate-500">{{ $movement->reason }}</p>
                                         @endif
@@ -298,6 +329,80 @@
 
                 <div class="table-footer">
                     {{ $movements->links() }}
+                </div>
+            </div>
+        </section>
+
+        <section class="grid gap-6 xl:grid-cols-2">
+            <div class="table-card">
+                <div class="table-toolbar">
+                    <div>
+                        <p class="section-kicker">Vencimientos</p>
+                        <h3 class="mt-1 text-lg font-bold text-slate-900">Productos proximos a vencer</h3>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table-shell">
+                        <thead class="table-head">
+                            <tr>
+                                <th class="table-head-cell">Producto</th>
+                                <th class="table-head-cell">Vence</th>
+                                <th class="table-head-cell">Saldo</th>
+                                <th class="table-head-cell">Proveedor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($expiringBatches as $batch)
+                                <tr class="table-row">
+                                    <td class="table-cell font-semibold text-slate-900">{{ $batch->product?->name }}</td>
+                                    <td class="table-cell">{{ $batch->expires_at?->format('d/m/Y') }}</td>
+                                    <td class="table-cell">{{ $batch->remaining_quantity }}</td>
+                                    <td class="table-cell">{{ $batch->supplier_name ?: '-' }}</td>
+                                </tr>
+                            @empty
+                                <tr class="table-row">
+                                    <td colspan="4" class="empty-state">No hay lotes por vencer en los próximos 10 días.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="table-toolbar">
+                    <div>
+                        <p class="section-kicker">Costos</p>
+                        <h3 class="mt-1 text-lg font-bold text-slate-900">Historial reciente</h3>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table-shell">
+                        <thead class="table-head">
+                            <tr>
+                                <th class="table-head-cell">Producto</th>
+                                <th class="table-head-cell">Fecha</th>
+                                <th class="table-head-cell">Costo</th>
+                                <th class="table-head-cell">Referencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($costHistory as $batch)
+                                <tr class="table-row">
+                                    <td class="table-cell font-semibold text-slate-900">{{ $batch->product?->name }}</td>
+                                    <td class="table-cell">{{ $batch->created_at->format('d/m/Y') }}</td>
+                                    <td class="table-cell">S/ {{ number_format((float) $batch->unit_cost, 2) }}</td>
+                                    <td class="table-cell">{{ $batch->reference ?: '-' }}</td>
+                                </tr>
+                            @empty
+                                <tr class="table-row">
+                                    <td colspan="4" class="empty-state">Todavia no hay historial de costos registrado.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>

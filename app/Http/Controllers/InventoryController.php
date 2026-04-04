@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\InventoryMovement;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,6 +51,18 @@ class InventoryController extends Controller
         $outOfStock = Product::where('stock', '<=', 0)->count();
         $lowStock = Product::where('stock', '>', 0)->where('stock', '<=', 5)->count();
         $todayMovements = InventoryMovement::whereDate('created_at', now()->toDateString())->count();
+        $expiringBatches = ProductBatch::with('product')
+            ->where('remaining_quantity', '>', 0)
+            ->whereNotNull('expires_at')
+            ->whereDate('expires_at', '<=', now()->addDays(10)->toDateString())
+            ->orderBy('expires_at')
+            ->limit(10)
+            ->get();
+        $costHistory = ProductBatch::with('product')
+            ->whereNotNull('unit_cost')
+            ->latest()
+            ->limit(10)
+            ->get();
 
         return view('inventory.index', compact(
             'products',
@@ -64,6 +77,8 @@ class InventoryController extends Controller
             'outOfStock',
             'lowStock',
             'todayMovements',
+            'expiringBatches',
+            'costHistory',
         ));
     }
 
@@ -72,6 +87,9 @@ class InventoryController extends Controller
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'numeric', 'gt:0'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'expires_at' => ['nullable', 'date'],
+            'supplier_name' => ['nullable', 'string', 'max:255'],
             'reason' => ['nullable', 'string', 'max:255'],
             'reference' => ['nullable', 'string', 'max:255'],
         ]);
@@ -81,6 +99,12 @@ class InventoryController extends Controller
 
         $this->validateQuantityForSaleType($product, $quantity);
 
+        if ($product->track_expiration && empty($data['expires_at'])) {
+            throw ValidationException::withMessages([
+                'expires_at' => 'La fecha de vencimiento es obligatoria para este producto.',
+            ]);
+        }
+
         $this->inventoryService->registerMovement(
             product: $product,
             movementType: InventoryMovement::TYPE_ENTRY,
@@ -89,6 +113,9 @@ class InventoryController extends Controller
             reason: $data['reason'] ?? 'Ingreso de stock',
             reference: $data['reference'] ?? null,
             userId: Auth::id(),
+            unitCost: isset($data['unit_cost']) ? (float) $data['unit_cost'] : null,
+            expiresAt: $data['expires_at'] ?? null,
+            supplierName: $data['supplier_name'] ?? $product->supplier_name,
         );
 
         return back()->with('status', 'Entrada de inventario registrada correctamente.');
@@ -127,6 +154,8 @@ class InventoryController extends Controller
             'product_id' => ['required', 'exists:products,id'],
             'direction' => ['required', 'in:in,out'],
             'quantity' => ['required', 'numeric', 'gt:0'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'expires_at' => ['nullable', 'date'],
             'reason' => ['required', 'string', 'max:255'],
         ]);
 
@@ -143,6 +172,9 @@ class InventoryController extends Controller
             reason: $data['reason'],
             reference: null,
             userId: Auth::id(),
+            unitCost: isset($data['unit_cost']) ? (float) $data['unit_cost'] : null,
+            expiresAt: $data['expires_at'] ?? null,
+            supplierName: $product->supplier_name,
         );
 
         return back()->with('status', 'Ajuste manual aplicado correctamente.');

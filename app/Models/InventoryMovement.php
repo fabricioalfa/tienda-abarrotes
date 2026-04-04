@@ -25,6 +25,8 @@ class InventoryMovement extends Model
         'quantity',
         'stock_before',
         'stock_after',
+        'unit_cost',
+        'expires_at',
         'reference',
         'reason',
     ];
@@ -35,6 +37,8 @@ class InventoryMovement extends Model
             'quantity' => 'decimal:3',
             'stock_before' => 'decimal:3',
             'stock_after' => 'decimal:3',
+            'unit_cost' => 'decimal:2',
+            'expires_at' => 'date',
         ];
     }
 

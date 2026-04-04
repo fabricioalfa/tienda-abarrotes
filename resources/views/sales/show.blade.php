@@ -29,6 +29,8 @@
                     <p><span class="font-semibold text-slate-800">Nro:</span> {{ $sale->sale_number }}</p>
                     <p><span class="font-semibold text-slate-800">Fecha:</span> {{ $sale->sold_at->format('d/m/Y H:i') }}</p>
                     <p><span class="font-semibold text-slate-800">Caja:</span> {{ $sale->user?->name }}</p>
+                    <p><span class="font-semibold text-slate-800">Pago:</span> {{ $sale->paymentMethodLabel() }}</p>
+                    <p><span class="font-semibold text-slate-800">Cliente:</span> {{ $sale->customer_name ?: 'Mostrador' }}</p>
                 </div>
             </div>
 
@@ -61,9 +63,27 @@
                         <span>Subtotal</span>
                         <span>S/ {{ number_format((float) $sale->subtotal, 2) }}</span>
                     </div>
+                    <div class="flex justify-between text-sm text-slate-700">
+                        <span>Descuento</span>
+                        <span>S/ {{ number_format((float) $sale->discount_amount, 2) }}</span>
+                    </div>
                     <div class="flex justify-between text-lg font-bold text-slate-900">
                         <span>Total</span>
                         <span>S/ {{ number_format((float) $sale->total, 2) }}</span>
+                    </div>
+                    <div class="border-t border-blue-100 pt-2 text-sm text-slate-700">
+                        <div class="flex justify-between">
+                            <span>Efectivo</span>
+                            <span>S/ {{ number_format((float) $sale->cash_amount, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>QR</span>
+                            <span>S/ {{ number_format((float) $sale->qr_amount, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Cambio</span>
+                            <span>S/ {{ number_format((float) $sale->change_amount, 2) }}</span>
+                        </div>
                     </div>
                 </div>
             </div>

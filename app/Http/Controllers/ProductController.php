@@ -25,7 +25,9 @@ class ProductController extends Controller
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($subQuery) use ($q) {
                     $subQuery->where('name', 'like', "%{$q}%")
-                        ->orWhere('barcode', 'like', "%{$q}%");
+                        ->orWhere('barcode', 'like', "%{$q}%")
+                        ->orWhere('brand', 'like', "%{$q}%")
+                        ->orWhere('supplier_name', 'like', "%{$q}%");
                 });
             })
             ->latest()
@@ -47,7 +49,10 @@ class ProductController extends Controller
         $data = $this->validatedData($request, null, true);
 
         $initialStock = (float) ($data['initial_stock'] ?? 0);
+        $initialCost = isset($data['initial_cost']) ? (float) $data['initial_cost'] : null;
+        $initialExpiresAt = $data['initial_expires_at'] ?? null;
         unset($data['initial_stock']);
+        unset($data['initial_cost'], $data['initial_expires_at']);
 
         $product = Product::create($data);
 
@@ -60,6 +65,9 @@ class ProductController extends Controller
                 reason: 'Stock inicial',
                 reference: null,
                 userId: $request->user()?->id,
+                unitCost: $initialCost,
+                expiresAt: $initialExpiresAt,
+                supplierName: $product->supplier_name,
             );
         }
 
@@ -93,6 +101,8 @@ class ProductController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'brand' => ['nullable', 'string', 'max:255'],
+            'supplier_name' => ['nullable', 'string', 'max:255'],
             'barcode' => [
                 'nullable',
                 'string',
@@ -101,9 +111,17 @@ class ProductController extends Controller
             ],
             'category_id' => ['required', 'exists:categories,id'],
             'sale_type' => ['required', Rule::in(['weight', 'unit'])],
-            'weight_unit' => ['nullable', Rule::in(['kg', 'g'])],
+            'weight_unit' => ['nullable', Rule::in(['kg', 'g', 'lb'])],
+            'allows_package_sale' => ['nullable', 'boolean'],
+            'package_name' => ['nullable', 'string', 'max:255'],
+            'units_per_package' => ['nullable', 'integer', 'min:2'],
             'price' => ['required', 'numeric', 'min:0'],
+            'package_price' => ['nullable', 'numeric', 'min:0'],
             'initial_stock' => [$isCreate ? 'nullable' : 'prohibited', 'numeric', 'min:0'],
+            'initial_cost' => [$isCreate ? 'nullable' : 'prohibited', 'numeric', 'min:0'],
+            'initial_expires_at' => [$isCreate ? 'nullable' : 'prohibited', 'date'],
+            'minimum_stock' => ['nullable', 'numeric', 'min:0'],
+            'track_expiration' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -123,8 +141,32 @@ class ProductController extends Controller
             }
         }
 
+        $data['allows_package_sale'] = $request->boolean('allows_package_sale');
+        $data['track_expiration'] = $request->boolean('track_expiration');
+
+        if ($data['sale_type'] === 'weight') {
+            $data['allows_package_sale'] = false;
+            $data['package_name'] = null;
+            $data['units_per_package'] = null;
+            $data['package_price'] = null;
+        }
+
+        if ($data['allows_package_sale']) {
+            if (empty($data['package_name']) || empty($data['units_per_package']) || ! isset($data['package_price'])) {
+                throw ValidationException::withMessages([
+                    'package_name' => 'Debes completar nombre, cantidad y precio del paquete.',
+                ]);
+            }
+        } else {
+            $data['package_name'] = null;
+            $data['units_per_package'] = null;
+            $data['package_price'] = null;
+        }
+
+        $data['minimum_stock'] = (float) ($data['minimum_stock'] ?? 0);
+
         if (! $isCreate) {
-            unset($data['initial_stock']);
+            unset($data['initial_stock'], $data['initial_cost'], $data['initial_expires_at']);
         }
 
         if ($product === null) {

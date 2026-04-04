@@ -5,11 +5,16 @@
         $hasProducts = \Illuminate\Support\Facades\Schema::hasTable('products');
         $hasCategories = \Illuminate\Support\Facades\Schema::hasTable('categories');
         $hasUsers = \Illuminate\Support\Facades\Schema::hasTable('users');
+        $hasBatches = \Illuminate\Support\Facades\Schema::hasTable('product_batches');
+        $hasCashRegisters = \Illuminate\Support\Facades\Schema::hasTable('cash_registers');
 
         $productCount = $hasProducts ? \App\Models\Product::count() : 0;
         $activeProductCount = $hasProducts ? \App\Models\Product::where('is_active', true)->count() : 0;
         $categoryCount = $hasCategories ? \App\Models\Category::count() : 0;
         $userCount = $hasUsers ? \App\Models\User::count() : 0;
+        $expiringInFive = $hasBatches ? \App\Models\ProductBatch::where('remaining_quantity', '>', 0)->whereNotNull('expires_at')->whereDate('expires_at', '>=', now()->toDateString())->whereDate('expires_at', '<=', now()->addDays(5)->toDateString())->count() : 0;
+        $expiringInTen = $hasBatches ? \App\Models\ProductBatch::where('remaining_quantity', '>', 0)->whereNotNull('expires_at')->whereDate('expires_at', '>', now()->addDays(5)->toDateString())->whereDate('expires_at', '<=', now()->addDays(10)->toDateString())->count() : 0;
+        $currentRegister = $hasCashRegisters ? \App\Models\CashRegister::current() : null;
     @endphp
 
     <x-slot name="header">
@@ -79,14 +84,14 @@
 
                             <article class="dashboard-stat dashboard-rail-card">
                                 <div class="dashboard-stat-head">
-                                    <span>Categorías</span>
+                                    <span>Alertas</span>
                                     <span class="dashboard-mini-dot"></span>
                                 </div>
                                 <div class="dashboard-stat-body">
-                                    <p class="text-xs uppercase tracking-[0.22em] text-slate-400">Total</p>
-                                    <p class="dashboard-value">{{ $categoryCount }}</p>
+                                    <p class="text-xs uppercase tracking-[0.22em] text-slate-400">Vencimientos</p>
+                                    <p class="dashboard-value">{{ $expiringInFive + $expiringInTen }}</p>
                                     <div class="dashboard-bar-track">
-                                        <div class="dashboard-bar-fill" style="width: {{ max(14, min(100, $categoryCount * 22)) }}%"></div>
+                                        <div class="dashboard-bar-fill" style="width: {{ max(14, min(100, ($expiringInFive + $expiringInTen) * 18)) }}%"></div>
                                     </div>
                                 </div>
                             </article>
@@ -133,6 +138,7 @@
                                     <div class="dashboard-action-strip">
                                         <a href="{{ route('products.index') }}" class="btn-primary whitespace-nowrap">Productos</a>
                                         <a href="{{ route('inventory.index') }}" class="btn-secondary whitespace-nowrap">Inventario</a>
+                                        <a href="{{ route('cash-registers.index') }}" class="btn-secondary whitespace-nowrap">Caja</a>
                                         <a href="{{ route('sales.index') }}" class="btn-secondary whitespace-nowrap">Ventas</a>
                                         <a href="{{ route('reports.sales') }}" class="btn-secondary whitespace-nowrap">Reportes</a>
                                         @if ($user->isAdmin())
@@ -170,22 +176,22 @@
                     <div class="dashboard-panel overflow-hidden">
                         <div class="dashboard-panel-head">
                             <div>
-                                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-blue-100">Guía rápida</p>
+                                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-blue-100">Alertas operativas</p>
                                 <h3 class="mt-1 text-lg font-bold">Qué revisar</h3>
                             </div>
                             <span class="dashboard-mini-dot"></span>
                         </div>
                         <div class="p-5">
                             <ul class="quick-list">
-                                <li>Confirma productos y stock antes de operar.</li>
-                                <li>Registra entradas, ventas y ajustes desde inventario.</li>
-                                <li>Controla ventas diarias desde el modulo de caja.</li>
+                                <li>Rojo: {{ $expiringInFive }} lotes vencen en 5 dias o menos.</li>
+                                <li>Amarillo: {{ $expiringInTen }} lotes vencen entre 6 y 10 dias.</li>
+                                <li>Caja: {{ $currentRegister ? 'abierta con S/ ' . number_format((float) $currentRegister->opening_amount, 2) : 'cerrada, abre antes de vender' }}.</li>
+                                <li>Confirma productos, stock y costos antes de operar.</li>
                                 @if ($user->isAdmin())
-                                    <li>Revisa categorías y usuarios con cambios pendientes.</li>
+                                    <li>Revisa categorías, usuarios y vencimientos pendientes.</li>
                                 @else
-                                    <li>Utiliza productos para consulta rápida en caja.</li>
+                                    <li>Utiliza productos y caja para una venta rapida.</li>
                                 @endif
-                                <li>Actualiza tu perfil si cambió correo o contraseña.</li>
                                 <li>Verifica reportes al cierre de jornada.</li>
                             </ul>
                         </div>

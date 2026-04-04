@@ -28,6 +28,12 @@
                 <p class="metric-value">S/ {{ number_format($todayTotal, 2) }}</p>
                 <p class="metric-meta">Importe acumulado del dia.</p>
             </article>
+
+            <article class="metric-card">
+                <p class="metric-label">Caja actual</p>
+                <p class="metric-value">{{ $currentRegister ? 'Abierta' : 'Cerrada' }}</p>
+                <p class="metric-meta">{{ $currentRegister ? 'Apertura: S/ ' . number_format((float) $currentRegister->opening_amount, 2) : 'Abre caja antes de vender.' }}</p>
+            </article>
         </section>
 
         <div class="shell-panel-strong p-4">
@@ -47,6 +53,8 @@
                             <th class="table-head-cell">Nro venta</th>
                             <th class="table-head-cell">Fecha</th>
                             <th class="table-head-cell">Cajero</th>
+                            <th class="table-head-cell">Cliente</th>
+                            <th class="table-head-cell">Pago</th>
                             <th class="table-head-cell">Items</th>
                             <th class="table-head-cell">Total</th>
                             <th class="table-head-cell">Accion</th>
@@ -58,6 +66,8 @@
                                 <td class="table-cell font-semibold text-slate-900">{{ $sale->sale_number }}</td>
                                 <td class="table-cell">{{ $sale->sold_at->format('d/m/Y H:i') }}</td>
                                 <td class="table-cell">{{ $sale->user?->name }}</td>
+                                <td class="table-cell">{{ $sale->customer_name ?: 'Mostrador' }}</td>
+                                <td class="table-cell">{{ $sale->paymentMethodLabel() }}</td>
                                 <td class="table-cell">{{ $sale->items->count() }}</td>
                                 <td class="table-cell font-semibold text-slate-900">S/ {{ number_format((float) $sale->total, 2) }}</td>
                                 <td class="table-cell">
@@ -66,7 +76,7 @@
                             </tr>
                         @empty
                             <tr class="table-row">
-                                <td colspan="6" class="empty-state">No hay ventas registradas para los filtros aplicados.</td>
+                                <td colspan="8" class="empty-state">No hay ventas registradas para los filtros aplicados.</td>
                             </tr>
                         @endforelse
                     </tbody>

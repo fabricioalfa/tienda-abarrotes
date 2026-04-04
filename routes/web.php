@@ -2,6 +2,7 @@
 // filepath: /home/fabri/Documentos/tienda/routes/web.php
 
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
@@ -42,6 +43,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/{sale}', [SaleController::class, 'show'])
         ->middleware('role:admin,caja')
         ->name('sales.show');
+
+    Route::get('/cash-registers', [CashRegisterController::class, 'index'])
+        ->middleware('role:admin,caja')
+        ->name('cash-registers.index');
+
+    Route::post('/cash-registers/open', [CashRegisterController::class, 'open'])
+        ->middleware('role:admin,caja')
+        ->name('cash-registers.open');
+
+    Route::post('/cash-registers/{cashRegister}/close', [CashRegisterController::class, 'close'])
+        ->middleware('role:admin,caja')
+        ->name('cash-registers.close');
 
     Route::get('/reports/sales', [SalesReportController::class, 'index'])
         ->middleware('role:admin,caja')

@@ -18,6 +18,9 @@ class SaleItem extends Model
         'weight_unit',
         'unit_price',
         'quantity',
+        'stock_quantity',
+        'pricing_mode',
+        'unit_label',
         'line_total',
     ];
 
@@ -26,6 +29,7 @@ class SaleItem extends Model
         return [
             'unit_price' => 'decimal:2',
             'quantity' => 'decimal:3',
+            'stock_quantity' => 'decimal:3',
             'line_total' => 'decimal:2',
         ];
     }
@@ -42,6 +46,12 @@ class SaleItem extends Model
 
     public function quantityLabel(): string
     {
+        if ($this->unit_label) {
+            $decimals = $this->sale_type === Product::SALE_TYPE_UNIT ? 0 : 3;
+
+            return rtrim(rtrim(number_format((float) $this->quantity, $decimals, '.', ''), '0'), '.') . ' ' . $this->unit_label;
+        }
+
         if ($this->sale_type === Product::SALE_TYPE_UNIT) {
             return rtrim(rtrim(number_format((float) $this->quantity, 0, '.', ''), '0'), '.') . ' unid';
         }

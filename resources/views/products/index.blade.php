@@ -46,6 +46,7 @@
                             <th class="table-head-cell">Producto</th>
                             <th class="table-head-cell">Categoría</th>
                             <th class="table-head-cell">Tipo</th>
+                            <th class="table-head-cell">Marca / proveedor</th>
                             <th class="table-head-cell">Código de barras</th>
                             <th class="table-head-cell">Precio</th>
                             <th class="table-head-cell">Stock</th>
@@ -65,14 +66,27 @@
                                     @if ($product->weight_unit)
                                         ({{ $product->weightUnitLabel() }})
                                     @endif
+                                    @if ($product->supportsPackageSale())
+                                        <p class="mt-1 text-xs text-slate-500">{{ $product->package_name }}: {{ $product->units_per_package }} unid | S/ {{ number_format((float) $product->package_price, 2) }}</p>
+                                    @endif
+                                </td>
+                                <td class="table-cell text-slate-500">
+                                    <p>{{ $product->brand ?: '-' }}</p>
+                                    <p class="mt-1 text-xs">{{ $product->supplier_name ?: 'Sin proveedor' }}</p>
                                 </td>
                                 <td class="table-cell text-slate-500">{{ $product->barcode ?: '-' }}</td>
                                 <td class="table-cell font-semibold text-slate-900">S/ {{ number_format((float) $product->price, 2) }}</td>
-                                <td class="table-cell">{{ $product->stock }} {{ $product->stockUnitLabel() }}</td>
                                 <td class="table-cell">
-                                    <span class="{{ $product->is_active ? 'badge-success' : 'badge-warning' }}">
-                                        {{ $product->is_active ? 'Activo' : 'Inactivo' }}
+                                    <p>{{ $product->stockBreakdownLabel() }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">Minimo: {{ rtrim(rtrim(number_format((float) $product->minimum_stock, 3, '.', ''), '0'), '.') ?: '0' }}</p>
+                                </td>
+                                <td class="table-cell">
+                                    <span class="{{ $product->is_active ? ($product->isLowStock() ? 'badge-warning' : 'badge-success') : 'badge-warning' }}">
+                                        {{ $product->is_active ? ($product->isLowStock() ? 'Stock bajo' : 'Activo') : 'Inactivo' }}
                                     </span>
+                                    @if ($product->track_expiration)
+                                        <p class="mt-1 text-xs text-slate-500">Controla vencimiento</p>
+                                    @endif
                                 </td>
 
                                 @if (auth()->user()->isAdmin())
@@ -92,7 +106,7 @@
                             </tr>
                         @empty
                             <tr class="table-row">
-                                <td colspan="{{ auth()->user()->isAdmin() ? 8 : 7 }}" class="empty-state">
+                                <td colspan="{{ auth()->user()->isAdmin() ? 9 : 8 }}" class="empty-state">
                                     No hay productos registrados.
                                 </td>
                             </tr>
