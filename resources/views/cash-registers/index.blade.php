@@ -40,25 +40,25 @@
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="metric-card !shadow-none">
                             <p class="metric-label">Apertura</p>
-                            <p class="metric-value">S/ {{ number_format((float) $currentRegister->opening_amount, 2) }}</p>
+                            <p class="metric-value">Bs. {{ number_format((float) $currentRegister->opening_amount, 2) }}</p>
                             <p class="metric-meta">{{ $currentRegister->opened_at->format('d/m/Y H:i') }}</p>
                         </div>
 
                         <div class="metric-card !shadow-none">
                             <p class="metric-label">Efectivo esperado</p>
-                            <p class="metric-value">S/ {{ number_format($currentRegister->expectedCash(), 2) }}</p>
+                            <p class="metric-value">Bs. {{ number_format($currentRegister->expectedCash(), 2) }}</p>
                             <p class="metric-meta">Incluye apertura y ventas en efectivo.</p>
                         </div>
 
                         <div class="metric-card !shadow-none">
                             <p class="metric-label">Ventas en efectivo</p>
-                            <p class="metric-value">S/ {{ number_format((float) $currentRegister->cash_sales_total, 2) }}</p>
+                            <p class="metric-value">Bs. {{ number_format((float) $currentRegister->cash_sales_total, 2) }}</p>
                             <p class="metric-meta">Cobros directos en caja.</p>
                         </div>
 
                         <div class="metric-card !shadow-none">
                             <p class="metric-label">Ventas QR y crédito</p>
-                            <p class="metric-value">S/ {{ number_format((float) $currentRegister->qr_sales_total + (float) $currentRegister->credit_sales_total, 2) }}</p>
+                            <p class="metric-value">Bs. {{ number_format((float) $currentRegister->qr_sales_total + (float) $currentRegister->credit_sales_total, 2) }}</p>
                             <p class="metric-meta">Cobros fuera del efectivo de caja.</p>
                         </div>
                     </div>
@@ -120,9 +120,9 @@
                                 <tr class="table-row">
                                     <td class="table-cell">{{ $register->opened_at->format('d/m/Y H:i') }}</td>
                                     <td class="table-cell">{{ $register->opener?->name }}</td>
-                                    <td class="table-cell">S/ {{ number_format((float) $register->opening_amount, 2) }}</td>
-                                    <td class="table-cell">S/ {{ number_format($register->expectedCash(), 2) }}</td>
-                                    <td class="table-cell">{{ $register->counted_cash !== null ? 'S/ ' . number_format((float) $register->counted_cash, 2) : '-' }}</td>
+                                    <td class="table-cell">Bs. {{ number_format((float) $register->opening_amount, 2) }}</td>
+                                    <td class="table-cell">Bs. {{ number_format($register->expectedCash(), 2) }}</td>
+                                    <td class="table-cell">{{ $register->counted_cash !== null ? 'Bs. ' . number_format((float) $register->counted_cash, 2) : '-' }}</td>
                                     <td class="table-cell">
                                         <span class="{{ $register->status === 'open' ? 'badge-success' : 'badge-warning' }}">
                                             {{ $register->status === 'open' ? 'Abierta' : 'Cerrada' }}

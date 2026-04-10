@@ -9,13 +9,12 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class SalesService
 {
-    public function __construct(private readonly InventoryService $inventoryService)
-    {
-    }
+    public function __construct(private readonly InventoryService $inventoryService) {}
 
     public function createSale(User $user, array $rawItems, array $saleData = []): Sale
     {
@@ -61,6 +60,17 @@ class SalesService
                 if (! $product->is_active) {
                     throw ValidationException::withMessages([
                         'items' => "El producto {$product->name} no esta activo para venta.",
+                    ]);
+                }
+
+                // Verificación de stock suficiente ANTES de procesar (previene overselling)
+                $requiredStock = $pricingMode === 'package'
+                    ? round((float) $item['quantity'] * (int) $product->units_per_package, 3)
+                    : round((float) $item['quantity'], 3);
+
+                if ($product->stock < $requiredStock) {
+                    throw ValidationException::withMessages([
+                        'items' => "Stock insuficiente para \"{$product->name}\". Disponible: {$product->stock}, solicitado: {$requiredStock}.",
                     ]);
                 }
 
@@ -116,7 +126,7 @@ class SalesService
             $payment = $this->normalizePaymentData($paymentMethod, $total, $saleData, $customerName);
 
             $sale = Sale::create([
-                'sale_number' => 'PENDING',
+                'sale_number' => 'TMP-'.Str::uuid(),
                 'user_id' => $user->id,
                 'cash_register_id' => $currentRegister->id,
                 'customer_name' => $customerName,
@@ -133,7 +143,7 @@ class SalesService
                 'notes' => $notes ?: null,
             ]);
 
-            $saleNumber = 'V-' . now()->format('Ymd') . '-' . str_pad((string) $sale->id, 5, '0', STR_PAD_LEFT);
+            $saleNumber = 'V-'.now()->format('Ymd').'-'.str_pad((string) $sale->id, 5, '0', STR_PAD_LEFT);
 
             foreach ($lineItems as $item) {
                 SaleItem::create([
@@ -165,11 +175,16 @@ class SalesService
                 'sale_number' => $saleNumber,
             ]);
 
-            $currentRegister->update([
-                'cash_sales_total' => round((float) $currentRegister->cash_sales_total + $payment['cash_amount'], 2),
-                'qr_sales_total' => round((float) $currentRegister->qr_sales_total + $payment['qr_amount'], 2),
-                'credit_sales_total' => round((float) $currentRegister->credit_sales_total + $payment['credit_amount'], 2),
-            ]);
+            // Incrementos atómicos con bindings parametrizados — sin interpolación de strings
+            DB::statement(
+                'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, qr_sales_total = qr_sales_total + ?, credit_sales_total = credit_sales_total + ? WHERE id = ?',
+                [
+                    round($payment['cash_amount'], 2),
+                    round($payment['qr_amount'], 2),
+                    round($payment['credit_amount'], 2),
+                    $currentRegister->id,
+                ]
+            );
 
             return $sale->load(['items.product', 'user']);
         });
@@ -188,7 +203,7 @@ class SalesService
                 continue;
             }
 
-            $key = $productId . '|' . $pricingMode;
+            $key = $productId.'|'.$pricingMode;
 
             if (! isset($merged[$key])) {
                 $merged[$key] = [

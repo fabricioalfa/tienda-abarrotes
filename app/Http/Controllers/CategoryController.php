@@ -1,4 +1,5 @@
 <?php
+
 // filepath: /home/fabri/Documentos/tienda/app/Http/Controllers/CategoryController.php
 
 namespace App\Http\Controllers;
@@ -25,7 +26,7 @@ class CategoryController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:1000'],
         ]);
 
         Category::create($data);
@@ -42,7 +43,7 @@ class CategoryController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('categories', 'name')->ignore($category->id)],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $category->update($data);

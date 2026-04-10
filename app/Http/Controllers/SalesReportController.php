@@ -11,6 +11,12 @@ class SalesReportController extends Controller
 {
     public function index(Request $request)
     {
+        // Validar fechas antes de usarlas en queries
+        $request->validate([
+            'from' => ['nullable', 'date', 'before_or_equal:today'],
+            'to' => ['nullable', 'date', 'after_or_equal:from', 'before_or_equal:today'],
+        ]);
+
         $from = $request->get('from', now()->startOfMonth()->toDateString());
         $to = $request->get('to', now()->toDateString());
 

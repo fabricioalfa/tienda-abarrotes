@@ -16,7 +16,7 @@
             <div class="notice-success">{{ session('status') }}</div>
         @endif
 
-        <section class="grid gap-4 sm:grid-cols-2">
+        <section class="grid gap-4 sm:grid-cols-3">
             <article class="metric-card">
                 <p class="metric-label">Ventas hoy</p>
                 <p class="metric-value">{{ $todaySales }}</p>
@@ -25,14 +25,14 @@
 
             <article class="metric-card">
                 <p class="metric-label">Monto hoy</p>
-                <p class="metric-value">S/ {{ number_format($todayTotal, 2) }}</p>
+                <p class="metric-value">Bs. {{ number_format($todayTotal, 2) }}</p>
                 <p class="metric-meta">Importe acumulado del dia.</p>
             </article>
 
             <article class="metric-card">
                 <p class="metric-label">Caja actual</p>
                 <p class="metric-value">{{ $currentRegister ? 'Abierta' : 'Cerrada' }}</p>
-                <p class="metric-meta">{{ $currentRegister ? 'Apertura: S/ ' . number_format((float) $currentRegister->opening_amount, 2) : 'Abre caja antes de vender.' }}</p>
+                <p class="metric-meta">{{ $currentRegister ? 'Apertura: Bs. ' . number_format((float) $currentRegister->opening_amount, 2) : 'Abre caja antes de vender.' }}</p>
             </article>
         </section>
 
@@ -69,7 +69,7 @@
                                 <td class="table-cell">{{ $sale->customer_name ?: 'Mostrador' }}</td>
                                 <td class="table-cell">{{ $sale->paymentMethodLabel() }}</td>
                                 <td class="table-cell">{{ $sale->items->count() }}</td>
-                                <td class="table-cell font-semibold text-slate-900">S/ {{ number_format((float) $sale->total, 2) }}</td>
+                                <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format((float) $sale->total, 2) }}</td>
                                 <td class="table-cell">
                                     <a href="{{ route('sales.show', $sale) }}" class="action-link">Ver recibo</a>
                                 </td>

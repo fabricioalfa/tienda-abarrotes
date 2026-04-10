@@ -1,8 +1,10 @@
 <?php
+
 // filepath: /home/fabri/Documentos/tienda/routes/web.php
 
-use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CashRegisterController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
@@ -11,13 +13,23 @@ use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/dashboard');
+Route::redirect('/', '/login');
 
 Route::middleware('auth')->group(function () {
-    Route::view('/dashboard', 'dashboard')->name('dashboard');
+    // /dashboard redirige al dashboard correcto según rol
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Dashboards por rol — URLs separadas para evitar bfcache cross-user
+    Route::get('/dashboard/admin', [DashboardController::class, 'adminIndex'])
+        ->middleware('role:admin')
+        ->name('dashboard.admin');
+
+    Route::get('/dashboard/caja', [DashboardController::class, 'cajaIndex'])
+        ->middleware('role:caja')
+        ->name('dashboard.caja');
 
     Route::get('/products', [ProductController::class, 'index'])
-        ->middleware('role:admin,caja')
+        ->middleware('role:admin')
         ->name('products.index');
 
     Route::get('/inventory', [InventoryController::class, 'index'])
@@ -37,7 +49,7 @@ Route::middleware('auth')->group(function () {
         ->name('sales.create');
 
     Route::post('/sales', [SaleController::class, 'store'])
-        ->middleware('role:admin,caja')
+        ->middleware(['role:admin,caja', 'throttle:sales'])
         ->name('sales.store');
 
     Route::get('/sales/{sale}', [SaleController::class, 'show'])

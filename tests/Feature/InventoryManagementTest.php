@@ -5,11 +5,22 @@ use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\User;
 
+test('caja cannot access products module', function () {
+    $caja = User::factory()->create(['role' => User::ROLE_CAJA]);
+
+    $response = $this
+        ->actingAs($caja)
+        ->get(route('products.index'));
+
+    $response->assertForbidden();
+});
+
 test('admin can register inventory entry and stock increases', function () {
     $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
     $category = Category::create(['name' => 'Carniceria']);
 
     $product = Product::create([
+        'code' => '100001',
         'name' => 'Lomo fino',
         'barcode' => null,
         'category_id' => $category->id,
@@ -46,6 +57,7 @@ test('sale movement discounts stock automatically', function () {
     $category = Category::create(['name' => 'Abarrotes']);
 
     $product = Product::create([
+        'code' => '100002',
         'name' => 'Arroz 1kg',
         'barcode' => '123456',
         'category_id' => $category->id,
@@ -80,6 +92,7 @@ test('it blocks sale when stock is insufficient', function () {
     $category = Category::create(['name' => 'Abarrotes']);
 
     $product = Product::create([
+        'code' => '100003',
         'name' => 'Azucar',
         'barcode' => null,
         'category_id' => $category->id,
@@ -113,11 +126,11 @@ test('creating product with initial stock logs inventory movement', function () 
     $response = $this
         ->actingAs($admin)
         ->post(route('products.store'), [
+            'code' => '100010',
             'name' => 'Pechuga de pollo',
             'barcode' => '987654',
             'category_id' => $category->id,
-            'sale_type' => Product::SALE_TYPE_WEIGHT,
-            'weight_unit' => 'kg',
+            'type_key' => 'kg',
             'price' => 17.50,
             'initial_stock' => 8.250,
             'is_active' => 1,
@@ -135,4 +148,32 @@ test('creating product with initial stock logs inventory movement', function () 
     expect($movement)->not->toBeNull();
     expect($movement->movement_type)->toBe(InventoryMovement::TYPE_ENTRY);
     expect((float) $movement->quantity)->toBe(8.25);
+});
+
+test('admin can register product with code barcode category and quarter price', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+    $category = Category::create(['name' => 'Carniceria']);
+
+    $response = $this
+        ->actingAs($admin)
+        ->post(route('products.store'), [
+            'code' => '100011',
+            'name' => 'Carne especial',
+            'barcode' => '77990011',
+            'category_id' => $category->id,
+            'type_key' => 'quarter',
+            'price' => 18.50,
+            'initial_stock' => 4,
+            'is_active' => 1,
+        ]);
+
+    $response->assertSessionHasNoErrors();
+
+    $product = Product::query()->where('code', '100011')->first();
+
+    expect($product)->not->toBeNull();
+    expect($product->barcode)->toBe('77990011');
+    expect($product->category_id)->toBe($category->id);
+    expect($product->weight_unit)->toBe('quarter');
+    expect((float) $product->price)->toBe(18.5);
 });

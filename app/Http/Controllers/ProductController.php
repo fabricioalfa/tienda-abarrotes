@@ -1,10 +1,11 @@
 <?php
+
 // filepath: /home/fabri/Documentos/tienda/app/Http/Controllers/ProductController.php
 
 namespace App\Http\Controllers;
 
-use App\Models\InventoryMovement;
 use App\Models\Category;
+use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Services\InventoryService;
 use Illuminate\Http\Request;
@@ -13,9 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
-    public function __construct(private readonly InventoryService $inventoryService)
-    {
-    }
+    public function __construct(private readonly InventoryService $inventoryService) {}
 
     public function index(Request $request)
     {
@@ -24,10 +23,18 @@ class ProductController extends Controller
         $products = Product::with('category')
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($subQuery) use ($q) {
-                    $subQuery->where('name', 'like', "%{$q}%")
-                        ->orWhere('barcode', 'like', "%{$q}%")
-                        ->orWhere('brand', 'like', "%{$q}%")
-                        ->orWhere('supplier_name', 'like', "%{$q}%");
+                    if (ctype_digit($q)) {
+                        $subQuery->where('id', (int) $q)
+                            ->orWhere('code', 'like', "%{$q}%")
+                            ->orWhere('name', 'like', "%{$q}%")
+                            ->orWhere('barcode', 'like', "%{$q}%");
+
+                        return;
+                    }
+
+                    $subQuery->where('code', 'like', "%{$q}%")
+                        ->orWhere('name', 'like', "%{$q}%")
+                        ->orWhere('barcode', 'like', "%{$q}%");
                 });
             })
             ->latest()
@@ -99,10 +106,26 @@ class ProductController extends Controller
 
     protected function validatedData(Request $request, ?Product $product = null, bool $isCreate = false): array
     {
+        $typeKey = (string) $request->input('type_key', '');
+
+        if ($typeKey === '') {
+            // Backward compatibility with old payloads.
+            $legacySaleType = (string) $request->input('sale_type', '');
+            $legacyWeightUnit = (string) $request->input('weight_unit', '');
+            $typeKey = $legacySaleType === Product::SALE_TYPE_UNIT ? 'unit' : $legacyWeightUnit;
+        }
+
+        $request->merge(['type_key' => $typeKey]);
+
         $data = $request->validate([
+            'code' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[0-9]+$/',
+                Rule::unique('products', 'code')->ignore($product?->id),
+            ],
             'name' => ['required', 'string', 'max:255'],
-            'brand' => ['nullable', 'string', 'max:255'],
-            'supplier_name' => ['nullable', 'string', 'max:255'],
             'barcode' => [
                 'nullable',
                 'string',
@@ -110,28 +133,23 @@ class ProductController extends Controller
                 Rule::unique('products', 'barcode')->ignore($product?->id),
             ],
             'category_id' => ['required', 'exists:categories,id'],
-            'sale_type' => ['required', Rule::in(['weight', 'unit'])],
-            'weight_unit' => ['nullable', Rule::in(['kg', 'g', 'lb'])],
-            'allows_package_sale' => ['nullable', 'boolean'],
-            'package_name' => ['nullable', 'string', 'max:255'],
-            'units_per_package' => ['nullable', 'integer', 'min:2'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'package_price' => ['nullable', 'numeric', 'min:0'],
-            'initial_stock' => [$isCreate ? 'nullable' : 'prohibited', 'numeric', 'min:0'],
-            'initial_cost' => [$isCreate ? 'nullable' : 'prohibited', 'numeric', 'min:0'],
+            'type_key' => ['required', Rule::in(['unit', 'kg', 'lb', 'quarter'])],
+            'price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
+            'initial_stock' => [$isCreate ? 'nullable' : 'prohibited', 'numeric', 'min:0', 'max:9999999.999'],
+            'initial_cost' => [$isCreate ? 'nullable' : 'prohibited', 'numeric', 'min:0', 'max:9999999.99'],
             'initial_expires_at' => [$isCreate ? 'nullable' : 'prohibited', 'date'],
-            'minimum_stock' => ['nullable', 'numeric', 'min:0'],
+            'minimum_stock' => ['nullable', 'numeric', 'min:0', 'max:9999999.999'],
             'track_expiration' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
+            // Campos de venta por paquete — solo aplican a productos por unidad
+            'allows_package_sale' => ['nullable', 'boolean'],
+            'package_name' => ['nullable', 'string', 'max:100'],
+            'units_per_package' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'package_price' => ['nullable', 'numeric', 'min:0', 'max:9999999.99'],
         ]);
 
-        if ($data['sale_type'] === 'weight' && empty($data['weight_unit'])) {
-            throw ValidationException::withMessages([
-                'weight_unit' => 'La unidad de peso es obligatoria para productos por peso.',
-            ]);
-        }
-
-        if ($data['sale_type'] === 'unit') {
+        if ($data['type_key'] === 'unit') {
+            $data['sale_type'] = Product::SALE_TYPE_UNIT;
             $data['weight_unit'] = null;
 
             if ($isCreate && isset($data['initial_stock']) && floor((float) $data['initial_stock']) !== (float) $data['initial_stock']) {
@@ -139,31 +157,42 @@ class ProductController extends Controller
                     'initial_stock' => 'Los productos por unidad solo aceptan stock entero.',
                 ]);
             }
-        }
-
-        $data['allows_package_sale'] = $request->boolean('allows_package_sale');
-        $data['track_expiration'] = $request->boolean('track_expiration');
-
-        if ($data['sale_type'] === 'weight') {
+        } else {
+            $data['sale_type'] = Product::SALE_TYPE_WEIGHT;
+            $data['weight_unit'] = $data['type_key'];
+            // Weight products cannot use package sale mode
             $data['allows_package_sale'] = false;
             $data['package_name'] = null;
             $data['units_per_package'] = null;
             $data['package_price'] = null;
         }
 
-        if ($data['allows_package_sale']) {
-            if (empty($data['package_name']) || empty($data['units_per_package']) || ! isset($data['package_price'])) {
-                throw ValidationException::withMessages([
-                    'package_name' => 'Debes completar nombre, cantidad y precio del paquete.',
-                ]);
+        // Package sale fields (only for unit products) — valores ya validados en $data
+        if ($data['type_key'] === 'unit') {
+            $data['allows_package_sale'] = (bool) ($data['allows_package_sale'] ?? false);
+            if ($data['allows_package_sale']) {
+                $data['package_name'] = ($data['package_name'] ?? null) ?: null;
+                $data['units_per_package'] = isset($data['units_per_package']) ? (int) $data['units_per_package'] : null;
+                $data['package_price'] = isset($data['package_price']) ? (float) $data['package_price'] : null;
+            } else {
+                $data['package_name'] = null;
+                $data['units_per_package'] = null;
+                $data['package_price'] = null;
             }
-        } else {
-            $data['package_name'] = null;
-            $data['units_per_package'] = null;
-            $data['package_price'] = null;
         }
 
+        $data['brand'] = null;
+        $data['supplier_name'] = null;
+        $data['description'] = null;
+        $data['track_expiration'] = $request->boolean('track_expiration');
+        $data['barcode'] = ($data['barcode'] ?? null) ?: $data['code'];
+        $data['sale_price'] = $data['price'];
+        $data['purchase_price'] = isset($data['initial_cost']) ? (float) $data['initial_cost'] : 0;
+        $data['unit'] = $data['type_key'] === 'unit' ? 'unidad' : $data['type_key'];
+        $data['category'] = Category::query()->where('id', $data['category_id'])->value('name');
+
         $data['minimum_stock'] = (float) ($data['minimum_stock'] ?? 0);
+        unset($data['type_key']);
 
         if (! $isCreate) {
             unset($data['initial_stock'], $data['initial_cost'], $data['initial_expires_at']);

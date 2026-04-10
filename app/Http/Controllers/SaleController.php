@@ -10,12 +10,17 @@ use Illuminate\Http\Request;
 
 class SaleController extends Controller
 {
-    public function __construct(private readonly SalesService $salesService)
-    {
-    }
+    public function __construct(private readonly SalesService $salesService) {}
 
     public function index(Request $request)
     {
+        // Validar parámetros de filtro antes de usarlos en queries
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'q' => ['nullable', 'string', 'max:255'],
+        ]);
+
         $q = trim((string) $request->get('q'));
         $from = $request->get('from');
         $to = $request->get('to');

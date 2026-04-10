@@ -1,17 +1,42 @@
 <?php
 
+use App\Models\CashRegister;
 use App\Models\Category;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Helper: insert an open cash register directly (bypasses mass-assignment protection on 'status').
+ */
+function openCashRegister(int $userId): CashRegister
+{
+    DB::table('cash_registers')->insert([
+        'opened_by' => $userId,
+        'opened_at' => now(),
+        'opening_amount' => 0,
+        'status' => CashRegister::STATUS_OPEN,
+        'cash_sales_total' => 0,
+        'qr_sales_total' => 0,
+        'credit_sales_total' => 0,
+        'notes' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return CashRegister::query()->latest('id')->firstOrFail();
+}
 
 test('caja can register unit sale and stock is discounted', function () {
     $caja = User::factory()->create(['role' => User::ROLE_CAJA]);
+    openCashRegister($caja->id);
     $category = Category::create(['name' => 'Abarrotes']);
 
     $product = Product::create([
+        'code' => '200001',
         'name' => 'Fideos',
         'barcode' => 'AB-100',
         'category_id' => $category->id,
@@ -28,6 +53,8 @@ test('caja can register unit sale and stock is discounted', function () {
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 4],
             ],
+            'payment_method' => 'cash',
+            'cash_received' => 20.00,
             'notes' => 'Venta mostrador',
         ]);
 
@@ -47,9 +74,11 @@ test('caja can register unit sale and stock is discounted', function () {
 
 test('caja can register weight sale and stock is discounted with decimals', function () {
     $caja = User::factory()->create(['role' => User::ROLE_CAJA]);
+    openCashRegister($caja->id);
     $category = Category::create(['name' => 'Carniceria']);
 
     $product = Product::create([
+        'code' => '200002',
         'name' => 'Carne molida',
         'barcode' => null,
         'category_id' => $category->id,
@@ -66,6 +95,8 @@ test('caja can register weight sale and stock is discounted with decimals', func
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 1.250],
             ],
+            'payment_method' => 'cash',
+            'cash_received' => 30.00,
         ]);
 
     $response->assertSessionHasNoErrors();
@@ -81,6 +112,7 @@ test('sales report page shows historical sales', function () {
     $category = Category::create(['name' => 'Abarrotes']);
 
     $product = Product::create([
+        'code' => '200003',
         'name' => 'Aceite',
         'barcode' => 'REP-1',
         'category_id' => $category->id,

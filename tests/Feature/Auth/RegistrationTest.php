@@ -1,19 +1,15 @@
 <?php
 
-test('registration screen can be rendered', function () {
+test('registration screen is not publicly available', function () {
     $response = $this->get('/register');
 
-    $response->assertStatus(200);
+    // Self-registration is disabled; only admins create users via the admin panel.
+    $response->assertStatus(404);
 });
 
-test('new users can register', function () {
-    $response = $this->post('/register', [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
+test('login page is accessible and registration link is absent', function () {
+    $response = $this->get('/login');
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertStatus(200);
+    $response->assertDontSee('Register');
 });

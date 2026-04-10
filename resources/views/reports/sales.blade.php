@@ -21,7 +21,7 @@
         <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <article class="metric-card">
                 <p class="metric-label">Total del periodo</p>
-                <p class="metric-value">S/ {{ number_format($totalSalesAmount, 2) }}</p>
+                <p class="metric-value">Bs. {{ number_format($totalSalesAmount, 2) }}</p>
                 <p class="metric-meta">Suma de ventas entre fechas.</p>
             </article>
 
@@ -33,13 +33,13 @@
 
             <article class="metric-card">
                 <p class="metric-label">Ticket promedio</p>
-                <p class="metric-value">S/ {{ number_format($averageTicket, 2) }}</p>
+                <p class="metric-value">Bs. {{ number_format($averageTicket, 2) }}</p>
                 <p class="metric-meta">Promedio por venta.</p>
             </article>
 
             <article class="metric-card">
                 <p class="metric-label">Total de hoy</p>
-                <p class="metric-value">S/ {{ number_format($todayTotal, 2) }}</p>
+                <p class="metric-value">Bs. {{ number_format($todayTotal, 2) }}</p>
                 <p class="metric-meta">Acumulado del dia actual.</p>
             </article>
         </section>
@@ -67,7 +67,7 @@
                                 <tr class="table-row">
                                     <td class="table-cell">{{ \Carbon\Carbon::parse($daily->day)->format('d/m/Y') }}</td>
                                     <td class="table-cell">{{ $daily->sales_count }}</td>
-                                    <td class="table-cell font-semibold text-slate-900">S/ {{ number_format((float) $daily->amount, 2) }}</td>
+                                    <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format((float) $daily->amount, 2) }}</td>
                                 </tr>
                             @empty
                                 <tr class="table-row">
@@ -104,7 +104,7 @@
                                     <td class="table-cell font-semibold text-slate-900">{{ $sale->sale_number }}</td>
                                     <td class="table-cell">{{ $sale->sold_at->format('d/m/Y H:i') }}</td>
                                     <td class="table-cell">{{ $sale->user?->name }}</td>
-                                    <td class="table-cell font-semibold text-slate-900">S/ {{ number_format((float) $sale->total, 2) }}</td>
+                                    <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format((float) $sale->total, 2) }}</td>
                                     <td class="table-cell">
                                         <a href="{{ route('sales.show', $sale) }}" class="action-link">Ver</a>
                                     </td>
@@ -147,7 +147,7 @@
                                 <tr class="table-row">
                                     <td class="table-cell font-semibold text-slate-900">{{ $product->product_name }}</td>
                                     <td class="table-cell">{{ rtrim(rtrim(number_format((float) $product->sold_quantity, 3, '.', ''), '0'), '.') }}</td>
-                                    <td class="table-cell">S/ {{ number_format((float) $product->total_amount, 2) }}</td>
+                                    <td class="table-cell">Bs. {{ number_format((float) $product->total_amount, 2) }}</td>
                                 </tr>
                             @empty
                                 <tr class="table-row">

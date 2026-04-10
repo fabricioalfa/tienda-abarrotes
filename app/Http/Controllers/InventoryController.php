@@ -14,21 +14,28 @@ use Illuminate\Validation\ValidationException;
 
 class InventoryController extends Controller
 {
-    public function __construct(private readonly InventoryService $inventoryService)
-    {
-    }
+    public function __construct(private readonly InventoryService $inventoryService) {}
 
     public function index(Request $request)
     {
+        // Validar y sanitizar todos los filtros antes de usarlos en queries
+        $request->validate([
+            'q' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'movement_type' => ['nullable', 'string', 'in:entry,sale,adjustment'],
+        ]);
+
         $q = trim((string) $request->get('q'));
-        $categoryId = $request->get('category_id');
-        $productId = $request->get('product_id');
+        $categoryId = $request->integer('category_id') ?: null;
+        $productId = $request->integer('product_id') ?: null;
         $movementType = $request->get('movement_type');
 
         $products = Product::with('category')
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($subQuery) use ($q) {
-                    $subQuery->where('name', 'like', "%{$q}%")
+                    $subQuery->where('code', 'like', "%{$q}%")
+                        ->orWhere('name', 'like', "%{$q}%")
                         ->orWhere('barcode', 'like', "%{$q}%");
                 });
             })
@@ -41,7 +48,7 @@ class InventoryController extends Controller
             ->when($movementType, fn ($query) => $query->where('movement_type', $movementType))
             ->when($productId, fn ($query) => $query->where('product_id', $productId))
             ->latest()
-            ->paginate(12, ['*'], 'movements_page')
+            ->paginate(3, ['*'], 'movements_page')
             ->withQueryString();
 
         $categories = Category::orderBy('name')->get();

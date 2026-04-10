@@ -1,4 +1,5 @@
 <?php
+
 // filepath: /home/fabri/Documentos/tienda/app/Models/Product.php
 
 namespace App\Models;
@@ -14,13 +15,20 @@ class Product extends Model
     use HasFactory;
 
     public const SALE_TYPE_WEIGHT = 'weight';
+
     public const SALE_TYPE_UNIT = 'unit';
 
     protected $fillable = [
+        'code',
         'name',
+        'category',
+        'description',
         'brand',
         'supplier_name',
         'barcode',
+        'purchase_price',
+        'sale_price',
+        'unit',
         'category_id',
         'sale_type',
         'weight_unit',
@@ -35,9 +43,20 @@ class Product extends Model
         'is_active',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Product $product): void {
+            if (! filled($product->code)) {
+                $product->code = static::generateUniqueCode();
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
+            'purchase_price' => 'decimal:2',
+            'sale_price' => 'decimal:2',
             'price' => 'decimal:2',
             'package_price' => 'decimal:2',
             'stock' => 'decimal:3',
@@ -79,6 +98,7 @@ class Product extends Model
             'kg' => 'Kg',
             'g' => 'Gramos',
             'lb' => 'Libra',
+            'quarter' => 'Cuarta',
             default => null,
         };
     }
@@ -92,8 +112,18 @@ class Product extends Model
         return match ($this->weight_unit) {
             'g' => 'gramos',
             'lb' => 'libras',
+            'quarter' => 'cuartas',
             default => 'kg',
         };
+    }
+
+    protected static function generateUniqueCode(): string
+    {
+        do {
+            $candidate = (string) random_int(10000000, 99999999);
+        } while (static::query()->where('code', $candidate)->exists());
+
+        return $candidate;
     }
 
     public function supportsPackageSale(): bool
@@ -107,7 +137,7 @@ class Product extends Model
     public function stockBreakdownLabel(): string
     {
         if (! $this->supportsPackageSale()) {
-            return rtrim(rtrim(number_format((float) $this->stock, 3, '.', ''), '0'), '.') . ' ' . $this->stockUnitLabel();
+            return rtrim(rtrim(number_format((float) $this->stock, 3, '.', ''), '0'), '.').' '.$this->stockUnitLabel();
         }
 
         $stock = (int) floor((float) $this->stock);

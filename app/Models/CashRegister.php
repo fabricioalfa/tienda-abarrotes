@@ -12,20 +12,16 @@ class CashRegister extends Model
     use HasFactory;
 
     public const STATUS_OPEN = 'open';
+
     public const STATUS_CLOSED = 'closed';
 
+    // Solo los campos seguros para apertura son mass-assignable.
+    // Los totales financieros, status y campos de cierre se escriben
+    // exclusivamente mediante métodos explícitos o DB::statement con bindings.
     protected $fillable = [
         'opened_by',
-        'closed_by',
         'opened_at',
-        'closed_at',
         'opening_amount',
-        'cash_sales_total',
-        'qr_sales_total',
-        'credit_sales_total',
-        'counted_cash',
-        'difference_amount',
-        'status',
         'notes',
     ];
 

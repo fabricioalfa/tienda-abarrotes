@@ -49,8 +49,8 @@
                             <tr class="table-row">
                                 <td class="table-cell">{{ $item->product_name }}</td>
                                 <td class="table-cell">{{ $item->quantityLabel() }}</td>
-                                <td class="table-cell">S/ {{ number_format((float) $item->unit_price, 2) }}</td>
-                                <td class="table-cell font-semibold text-slate-900">S/ {{ number_format((float) $item->line_total, 2) }}</td>
+                                <td class="table-cell">Bs. {{ number_format((float) $item->unit_price, 2) }}</td>
+                                <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format((float) $item->line_total, 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -61,28 +61,28 @@
                 <div class="w-full max-w-xs space-y-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
                     <div class="flex justify-between text-sm text-slate-700">
                         <span>Subtotal</span>
-                        <span>S/ {{ number_format((float) $sale->subtotal, 2) }}</span>
+                        <span>Bs. {{ number_format((float) $sale->subtotal, 2) }}</span>
                     </div>
                     <div class="flex justify-between text-sm text-slate-700">
                         <span>Descuento</span>
-                        <span>S/ {{ number_format((float) $sale->discount_amount, 2) }}</span>
+                        <span>Bs. {{ number_format((float) $sale->discount_amount, 2) }}</span>
                     </div>
                     <div class="flex justify-between text-lg font-bold text-slate-900">
                         <span>Total</span>
-                        <span>S/ {{ number_format((float) $sale->total, 2) }}</span>
+                        <span>Bs. {{ number_format((float) $sale->total, 2) }}</span>
                     </div>
                     <div class="border-t border-blue-100 pt-2 text-sm text-slate-700">
                         <div class="flex justify-between">
                             <span>Efectivo</span>
-                            <span>S/ {{ number_format((float) $sale->cash_amount, 2) }}</span>
+                            <span>Bs. {{ number_format((float) $sale->cash_amount, 2) }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span>QR</span>
-                            <span>S/ {{ number_format((float) $sale->qr_amount, 2) }}</span>
+                            <span>Bs. {{ number_format((float) $sale->qr_amount, 2) }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span>Cambio</span>
-                            <span>S/ {{ number_format((float) $sale->change_amount, 2) }}</span>
+                            <span>Bs. {{ number_format((float) $sale->change_amount, 2) }}</span>
                         </div>
                     </div>
                 </div>

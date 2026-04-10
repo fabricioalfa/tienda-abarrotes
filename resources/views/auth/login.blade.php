@@ -1,58 +1,61 @@
 <x-guest-layout>
-    <div class="space-y-6">
-        <div class="text-center">
-            <h2 class="text-2xl font-extrabold text-slate-900">Iniciar sesión</h2>
-            <p class="mt-2 text-sm text-slate-500">Ingresa con tu cuenta para acceder al panel.</p>
-        </div>
-
-        <div class="rounded-[18px] border border-blue-100 bg-blue-50/80 p-4 text-sm text-blue-900">
-            <p class="font-semibold">Usuarios de prueba</p>
-            <div class="mt-3 space-y-1 text-blue-800">
-                <p>Administrador: admin@tienda.local / password</p>
-                <p>Caja: caja@tienda.local / password</p>
-            </div>
-        </div>
-
-        <x-auth-session-status class="mb-4" :status="session('status')" />
-
-        <form method="POST" action="{{ route('login') }}" class="space-y-5">
+    <form method="POST" action="{{ route('login') }}">
         @csrf
 
-            <div>
-                <x-input-label for="email" value="Correo electrónico" />
-                <x-text-input id="email" class="mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+        {{-- Email --}}
+        <div class="field">
+            <label for="email">Correo electrónico</label>
+            <div class="input-wrap">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                </svg>
+                <input
+                    id="email" type="email" name="email"
+                    value="{{ old('email') }}"
+                    required autofocus autocomplete="username"
+                    placeholder="usuario@ejemplo.com"
+                    class="{{ $errors->has('email') ? 'is-error' : '' }}"
+                />
             </div>
+            @error('email')
+                <div class="field-error">{{ $message }}</div>
+            @enderror
+        </div>
 
-            <div>
-                <x-input-label for="password" value="Contraseña" />
-
-                <x-text-input id="password" class="mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-                <x-input-error :messages="$errors->get('password')" class="mt-2" />
+        {{-- Password --}}
+        <div class="field" x-data="{ show: false }">
+            <label for="password">Contraseña</label>
+            <div class="input-wrap">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+                <input
+                    id="password" :type="show ? 'text' : 'password'" name="password"
+                    required autocomplete="current-password"
+                    placeholder="••••••••"
+                    class="{{ $errors->has('password') ? 'is-error' : '' }}"
+                />
+                <button type="button" class="toggle-pw" @click="show = !show" tabindex="-1">
+                    <svg x-show="!show" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                    <svg x-show="show" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" style="display:none">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
+                </button>
             </div>
+            @error('password')
+                <div class="field-error">{{ $message }}</div>
+            @enderror
+        </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <label for="remember_me" class="inline-flex items-center gap-3 text-sm text-slate-600">
-                    <input id="remember_me" type="checkbox" class="field-checkbox" name="remember">
-                    <span>Recordar sesión</span>
-                </label>
+        {{-- Remember --}}
+        <div class="remember">
+            <input id="remember_me" type="checkbox" name="remember">
+            <label for="remember_me">Recordar sesión</label>
+        </div>
 
-                @if (Route::has('password.request'))
-                    <a class="text-sm font-semibold text-slate-500 transition hover:text-slate-900" href="{{ route('password.request') }}">
-                        ¿Olvidaste tu contraseña?
-                    </a>
-                @endif
-            </div>
-
-            <div class="pt-1">
-                <x-primary-button class="w-full justify-center">
-                    Ingresar
-                </x-primary-button>
-            </div>
-        </form>
-    </div>
+        <button type="submit" class="btn-submit">Ingresar al sistema</button>
+    </form>
 </x-guest-layout>

@@ -28,8 +28,9 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            // max:72 evita confusión por el límite silencioso de bcrypt (72 bytes)
+            'password' => ['required', 'string', 'max:72'],
         ];
     }
 
