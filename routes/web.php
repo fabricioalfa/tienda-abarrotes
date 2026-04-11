@@ -72,6 +72,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,caja')
         ->name('reports.sales');
 
+    Route::get('/reports/sales/export', [SalesReportController::class, 'export'])
+        ->middleware('role:admin')
+        ->name('reports.sales.export');
+
     Route::middleware('role:admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::resource('categories', CategoryController::class)->except(['show']);

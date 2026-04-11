@@ -71,6 +71,8 @@
             } elseif (request()->routeIs('users.edit')) {
                 $breadcrumbs[] = ['label' => 'Editar usuario', 'route' => null];
             }
+        } elseif (request()->routeIs('cash-registers.*')) {
+            $breadcrumbs[] = ['label' => 'Caja', 'route' => route('cash-registers.index')];
         } elseif (request()->routeIs('profile.*')) {
             $breadcrumbs[] = ['label' => 'Perfil', 'route' => route('profile.edit')];
         }

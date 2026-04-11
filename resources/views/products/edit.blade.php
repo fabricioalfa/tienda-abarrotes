@@ -31,8 +31,8 @@
                 </div>
 
                 <div>
-                    <label class="field-label">Nombre</label>
-                    <input type="text" name="name" value="{{ old('name', $product->name) }}" class="field-input">
+                    <label class="field-label">Nombre <span class="text-red-500">*</span></label>
+                    <input type="text" name="name" value="{{ old('name', $product->name) }}" class="field-input" required maxlength="255">
                     @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
@@ -67,8 +67,8 @@
                 </div>
 
                 <div>
-                    <label class="field-label">Precio de venta (Bs.)</label>
-                    <input type="number" step="0.01" min="0" name="price" value="{{ old('price', $product->price) }}" class="field-input">
+                    <label class="field-label">Precio de venta (Bs.) <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" min="0" name="price" value="{{ old('price', $product->price) }}" class="field-input" required>
                     <p class="field-help">Para kg, libra o cuartilla el precio se aplica a esa unidad.</p>
                     @error('price') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>

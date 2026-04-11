@@ -112,6 +112,7 @@
                                 <th class="table-head-cell">Apertura</th>
                                 <th class="table-head-cell">Esperado</th>
                                 <th class="table-head-cell">Contado</th>
+                                <th class="table-head-cell">Diferencia</th>
                                 <th class="table-head-cell">Estado</th>
                             </tr>
                         </thead>
@@ -124,6 +125,16 @@
                                     <td class="table-cell">Bs. {{ number_format($register->expectedCash(), 2) }}</td>
                                     <td class="table-cell">{{ $register->counted_cash !== null ? 'Bs. ' . number_format((float) $register->counted_cash, 2) : '-' }}</td>
                                     <td class="table-cell">
+                                        @if ($register->counted_cash !== null)
+                                            @php $diff = (float) $register->counted_cash - $register->expectedCash(); @endphp
+                                            <span class="{{ $diff >= 0 ? 'badge-success' : 'badge-warning' }}">
+                                                {{ $diff >= 0 ? '+' : '' }}Bs. {{ number_format($diff, 2) }}
+                                            </span>
+                                        @else
+                                            <span class="text-slate-400">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="table-cell">
                                         <span class="{{ $register->status === 'open' ? 'badge-success' : 'badge-warning' }}">
                                             {{ $register->status === 'open' ? 'Abierta' : 'Cerrada' }}
                                         </span>
@@ -131,7 +142,7 @@
                                 </tr>
                             @empty
                                 <tr class="table-row">
-                                    <td colspan="6" class="empty-state">Aun no hay aperturas o cierres de caja.</td>
+                                    <td colspan="7" class="empty-state">Aun no hay aperturas o cierres de caja.</td>
                                 </tr>
                             @endforelse
                         </tbody>

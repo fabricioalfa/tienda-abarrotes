@@ -68,7 +68,7 @@
                                 <td class="table-cell">{{ $sale->user?->name }}</td>
                                 <td class="table-cell">{{ $sale->customer_name ?: 'Mostrador' }}</td>
                                 <td class="table-cell">{{ $sale->paymentMethodLabel() }}</td>
-                                <td class="table-cell">{{ $sale->items->count() }}</td>
+                                <td class="table-cell">{{ $sale->items_count ?? 0 }}</td>
                                 <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format((float) $sale->total, 2) }}</td>
                                 <td class="table-cell">
                                     <a href="{{ route('sales.show', $sale) }}" class="action-link">Ver recibo</a>

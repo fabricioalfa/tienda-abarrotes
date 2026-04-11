@@ -5,7 +5,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="section-kicker">Caja / Ventas</p>
-                <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">Bienvenida, {{ $user->name }}</h2>
+                <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">Bienvenido, {{ $user->name }}</h2>
                 <p class="mt-1 text-sm text-slate-500">{{ now()->isoFormat('dddd D [de] MMMM, YYYY') }}</p>
             </div>
             <div class="flex items-center gap-2">

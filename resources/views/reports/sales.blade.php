@@ -11,10 +11,19 @@
 
     <div class="space-y-6">
         <div class="shell-panel-strong p-4">
-            <form method="GET" class="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+            <form method="GET" class="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
                 <input type="date" name="from" value="{{ $from }}" class="field-input">
                 <input type="date" name="to" value="{{ $to }}" class="field-input">
                 <button class="btn-secondary">Actualizar reporte</button>
+                @if(auth()->user()->role === 'admin')
+                    <a href="{{ route('reports.sales.export', ['from' => $from, 'to' => $to]) }}"
+                       class="btn-secondary flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Exportar CSV
+                    </a>
+                @endif
             </form>
         </div>
 

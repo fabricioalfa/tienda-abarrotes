@@ -1,5 +1,10 @@
 @php
     $user = Auth::user();
+    $navInitials = collect(explode(' ', (string) $user?->name))
+        ->filter()
+        ->take(2)
+        ->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))
+        ->implode('');
     $links = array_values(array_filter([
         ['label' => 'Resumen', 'route' => route('dashboard'), 'active' => request()->routeIs('dashboard', 'dashboard.admin', 'dashboard.caja'), 'icon' => 'M3.75 3h16.5A1.5 1.5 0 0 1 21.75 4.5v4.125A1.5 1.5 0 0 1 20.25 10.125H3.75a1.5 1.5 0 0 1-1.5-1.5V4.5A1.5 1.5 0 0 1 3.75 3Zm0 10.875h4.5a1.5 1.5 0 0 1 1.5 1.5v4.125a1.5 1.5 0 0 1-1.5 1.5h-4.5a1.5 1.5 0 0 1-1.5-1.5V15.375a1.5 1.5 0 0 1 1.5-1.5Zm10.5 0h6a1.5 1.5 0 0 1 1.5 1.5v4.125a1.5 1.5 0 0 1-1.5 1.5h-6a1.5 1.5 0 0 1-1.5-1.5V15.375a1.5 1.5 0 0 1 1.5-1.5Z'],
         $user->isAdmin() ? ['label' => 'Productos', 'route' => route('products.index'), 'active' => request()->routeIs('products.*'), 'icon' => 'M21 7.5v9a2.25 2.25 0 0 1-1.166 1.977l-7.5 4.143a2.25 2.25 0 0 1-2.168 0l-7.5-4.143A2.25 2.25 0 0 1 1.5 16.5v-9a2.25 2.25 0 0 1 1.166-1.977l7.5-4.143a2.25 2.25 0 0 1 2.168 0l7.5 4.143A2.25 2.25 0 0 1 21 7.5Zm-9 13.125V12M3.45 6.75 12 11.25l8.55-4.5'] : null,
@@ -16,7 +21,7 @@
     <div class="px-4 pt-4 sm:px-6 lg:hidden">
         <div class="executive-topbar flex items-center justify-between px-4 py-3">
             <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-                <span class="executive-brand-mark">TS</span>
+                <span class="executive-brand-mark">{{ $navInitials }}</span>
                 <div class="min-w-0">
                     <p class="truncate text-[10px] font-semibold tracking-[0.08em] text-blue-100/80">{{ \App\Models\User::roles()[$user->role] ?? $user->role }}</p>
                     <p class="truncate text-base font-bold text-white">{{ $user->name }}</p>
@@ -36,7 +41,7 @@
             <div class="executive-sidebar-top-card">
                 <div class="relative">
                     <button type="button" class="executive-sidebar-account-trigger" @click="profileOpenDesktop = !profileOpenDesktop" :aria-expanded="profileOpenDesktop.toString()">
-                        <span class="executive-brand-mark executive-brand-mark-lg">TS</span>
+                        <span class="executive-brand-mark executive-brand-mark-lg">{{ $navInitials }}</span>
                         <span class="min-w-0 flex-1 text-left">
                             <span class="block text-[11px] font-semibold tracking-[0.08em] text-blue-100/80">{{ \App\Models\User::roles()[$user->role] ?? $user->role }}</span>
                             <span class="mt-1 block text-[1.05rem] font-bold leading-5 text-white">{{ $user->name }}</span>
@@ -98,7 +103,7 @@
 
                 <div class="relative mt-3">
                     <button type="button" class="executive-sidebar-account-trigger" @click="profileOpenMobile = !profileOpenMobile" :aria-expanded="profileOpenMobile.toString()">
-                        <span class="executive-brand-mark executive-brand-mark-lg">TS</span>
+                        <span class="executive-brand-mark executive-brand-mark-lg">{{ $navInitials }}</span>
                         <span class="min-w-0 flex-1 text-left">
                             <span class="block text-[11px] font-semibold tracking-[0.08em] text-blue-100/80">{{ \App\Models\User::roles()[$user->role] ?? $user->role }}</span>
                             <span class="mt-1 block text-[1.05rem] font-bold leading-5 text-white">{{ $user->name }}</span>

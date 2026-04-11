@@ -25,7 +25,8 @@ class SaleController extends Controller
         $from = $request->get('from');
         $to = $request->get('to');
 
-        $sales = Sale::with(['user', 'items'])
+        $sales = Sale::with(['user'])
+            ->withCount('items')
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($subQuery) use ($q) {
                     $subQuery->where('sale_number', 'like', "%{$q}%")
