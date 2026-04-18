@@ -52,11 +52,11 @@
                     </button>
 
                     <div
-                        x-cloak
                         x-show="profileOpenDesktop"
                         x-transition.origin.top.left
                         @click.outside="profileOpenDesktop = false"
                         class="executive-user-dropdown"
+                        style="display: none;"
                     >
                         <a href="{{ route('profile.edit') }}" class="executive-user-dropdown-link" @click="profileOpenDesktop = false">Perfil</a>
                         <form method="POST" action="{{ route('logout') }}">
@@ -114,11 +114,11 @@
                     </button>
 
                     <div
-                        x-cloak
                         x-show="profileOpenMobile"
                         x-transition.origin.top.left
                         @click.outside="profileOpenMobile = false"
                         class="executive-user-dropdown"
+                        style="display: none;"
                     >
                         <a href="{{ route('profile.edit') }}" class="executive-user-dropdown-link" @click="profileOpenMobile = false; open = false">Perfil</a>
                         <form method="POST" action="{{ route('logout') }}">

@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-[x-cloak] {
-	display: none !important;
-}
-
 @layer base {
+	[x-cloak] {
+		display: none !important;
+	}
+
 	:root {
 		--page-bg: #edf2f8;
 		--page-bg-soft: #f6f9fd;
