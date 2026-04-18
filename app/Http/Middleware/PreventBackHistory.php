@@ -36,7 +36,7 @@ class PreventBackHistory
             // Content Security Policy — ajustada para Vite + Alpine.js + fonts
             'Content-Security-Policy' => implode('; ', [
                 "default-src 'self'",
-                "script-src 'self' 'unsafe-inline'",   // Alpine.js requiere inline scripts
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'",   // Alpine.js requiere unsafe-eval para expresiones
                 "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
                 "font-src 'self' https://fonts.bunny.net",
                 "img-src 'self' data:",
