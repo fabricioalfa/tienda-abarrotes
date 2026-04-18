@@ -457,11 +457,6 @@
 	.executive-user-dropdown {
 		@apply mt-3 rounded-2xl border border-white/10 bg-slate-950/75 p-2 backdrop-blur-xl;
 	}
-	
-	/* Ocultar dropdown por defecto hasta que Alpine.js tome control */
-	.executive-user-dropdown:not([style*="display"]) {
-		display: none;
-	}
 
 	.executive-user-dropdown-link {
 		@apply flex w-full items-center rounded-xl px-4 py-3 text-sm font-semibold text-blue-50 transition hover:bg-white/10 hover:text-white;
