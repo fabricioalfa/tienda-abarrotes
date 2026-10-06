@@ -255,7 +255,7 @@
 <body>
 
 <script>
-    const PRODUCTS_DATA = {!! json_encode($productsJson->values()->all()) !!};
+    const PRODUCTS_DATA = @json($productsJson->values()->all());
 </script>
 
 <form method="POST" action="{{ route('sales.store') }}" id="sale-form">

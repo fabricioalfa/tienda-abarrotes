@@ -69,6 +69,22 @@ class UserController extends Controller
             return redirect()->route('users.index')->with('error', 'No se puede eliminar el usuario autenticado.');
         }
 
+        // No hace falta una guarda "ultimo administrador" aqui: esta ruta exige
+        // rol admin (routes/web.php) y el bloque de arriba impide borrarse a si
+        // mismo, asi que siempre queda al menos un administrador vivo.
+
+        // `sales.user_id` y `cash_registers.opened_by` son ON DELETE RESTRICT:
+        // borrar un usuario con historial falla a nivel de base de datos.
+        $blockers = $user->deletionBlockers();
+
+        if ($blockers !== []) {
+            return redirect()->route('users.index')->with(
+                'error',
+                'No se puede eliminar "'.$user->name.'" porque tiene '.implode(' y ', $blockers)
+                .'. Su usuario debe conservarse para que ese historial siga siendo trazable.'
+            );
+        }
+
         $user->delete();
 
         return redirect()->route('users.index')->with('status', 'Usuario eliminado correctamente.');

@@ -48,6 +48,27 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        // Un administrador puede cambiar su contrasena desde aqui, pero no
+        // borrarse a si mismo si es el unico: dejaria el sistema sin acceso.
+        // El error va bajo la clave 'password' porque es la unica que el modal
+        // de borrado muestra (resources/views/profile/partials/delete-user-form.blade.php).
+        if ($user->isLastAdmin()) {
+            return Redirect::route('profile.edit')->withErrors([
+                'password' => 'Eres el unico administrador. Crea otro usuario administrador antes de eliminar tu cuenta.',
+            ], 'userDeletion');
+        }
+
+        // `sales.user_id` y `cash_registers.opened_by` son ON DELETE RESTRICT:
+        // borrar un usuario con historial falla a nivel de base de datos.
+        $blockers = $user->deletionBlockers();
+
+        if ($blockers !== []) {
+            return Redirect::route('profile.edit')->withErrors([
+                'password' => 'No se puede eliminar tu cuenta porque tiene '.implode(' y ', $blockers)
+                    .'. Tu usuario debe conservarse para que el historial de ventas sea trazable.',
+            ], 'userDeletion');
+        }
+
         Auth::logout();
 
         $user->delete();

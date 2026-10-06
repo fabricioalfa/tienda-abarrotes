@@ -67,4 +67,46 @@ class User extends Authenticatable
     {
         return $this->hasMany(CashRegister::class, 'closed_by');
     }
+
+    /**
+     * Relaciones que impiden borrar al usuario.
+     *
+     * Las claves foraneas de `sales.user_id` y `cash_registers.opened_by` son
+     * ON DELETE RESTRICT, asi que borrar un usuario con historial lanza una
+     * QueryException (error 500). Estas consultas permiten avisar al usuario
+     * con un mensaje claro en lugar de una pantalla en blanco.
+     *
+     * @return array<int, string>
+     */
+    public function deletionBlockers(): array
+    {
+        $blockers = [];
+
+        if ($this->sales()->exists()) {
+            $blockers[] = 'ventas registradas';
+        }
+
+        if ($this->openedCashRegisters()->exists()) {
+            $blockers[] = 'cajas abiertas';
+        }
+
+        return $blockers;
+    }
+
+    /**
+     * Indica si este usuario es el ultimo administrador activo. Borrarlo dejaria
+     * el sistema sin ningun usuario capaz de administrar productos, categorias
+     * ni usuarios.
+     */
+    public function isLastAdmin(): bool
+    {
+        if (! $this->isAdmin()) {
+            return false;
+        }
+
+        return static::query()
+            ->where('role', self::ROLE_ADMIN)
+            ->whereKeyNot($this->getKey())
+            ->doesntExist();
+    }
 }
