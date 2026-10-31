@@ -21,6 +21,7 @@ class InventoryService
         ?float $unitCost = null,
         ?string $expiresAt = null,
         ?string $supplierName = null,
+        ?int $supplierId = null,
     ): InventoryMovement {
         $normalizedQuantity = $this->normalizeQuantity($quantity);
 
@@ -30,7 +31,7 @@ class InventoryService
             ]);
         }
 
-        return DB::transaction(function () use ($product, $movementType, $direction, $normalizedQuantity, $reason, $reference, $userId, $unitCost, $expiresAt, $supplierName) {
+        return DB::transaction(function () use ($product, $movementType, $direction, $normalizedQuantity, $reason, $reference, $userId, $unitCost, $expiresAt, $supplierName, $supplierId) {
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
 
             $before = round((float) $lockedProduct->stock, 3);
@@ -58,6 +59,7 @@ class InventoryService
                 ProductBatch::create([
                     'product_id' => $lockedProduct->id,
                     'user_id' => $userId,
+                    'supplier_id' => $supplierId,
                     'quantity' => $normalizedQuantity,
                     'remaining_quantity' => $normalizedQuantity,
                     'unit_cost' => $unitCost,
@@ -71,6 +73,7 @@ class InventoryService
             return InventoryMovement::create([
                 'product_id' => $lockedProduct->id,
                 'user_id' => $userId,
+                'supplier_id' => $supplierId,
                 'movement_type' => $movementType,
                 'direction' => $direction,
                 'quantity' => $normalizedQuantity,

@@ -14,6 +14,13 @@
             <form method="GET" class="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
                 <input type="date" name="from" value="{{ $from }}" class="field-input">
                 <input type="date" name="to" value="{{ $to }}" class="field-input">
+                <select name="category_id" class="field-input">
+                    <option value="">Todas las categorías</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category->id }}" @selected((string) $categoryId === (string) $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+                <input type="text" name="q" value="{{ $q }}" class="field-input" placeholder="Producto">
                 <button class="btn-secondary">Actualizar reporte</button>
                 @if(auth()->user()->role === 'admin')
                     <a href="{{ route('reports.sales.export', ['from' => $from, 'to' => $to]) }}"
@@ -104,16 +111,24 @@
                                 <th class="table-head-cell">Fecha</th>
                                 <th class="table-head-cell">Caja</th>
                                 <th class="table-head-cell">Total</th>
+                                <th class="table-head-cell">Ganancia</th>
                                 <th class="table-head-cell">Recibo</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($salesHistory as $sale)
+                                @php
+                                    $ganancia = 0;
+                                    foreach ($sale->items as $item) {
+                                        $ganancia += (float) $item->line_total - ((float) ($item->cost_price ?? 0) * (float) $item->stock_quantity);
+                                    }
+                                @endphp
                                 <tr class="table-row">
                                     <td class="table-cell font-semibold text-slate-900">{{ $sale->sale_number }}</td>
                                     <td class="table-cell">{{ $sale->sold_at->format('d/m/Y H:i') }}</td>
                                     <td class="table-cell">{{ $sale->user?->name }}</td>
                                     <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format((float) $sale->total, 2) }}</td>
+                                    <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format($ganancia, 2) }}</td>
                                     <td class="table-cell">
                                         <a href="{{ route('sales.show', $sale) }}" class="action-link">Ver</a>
                                     </td>
@@ -179,18 +194,20 @@
                 <div class="overflow-x-auto">
                     <table class="table-shell">
                         <thead class="table-head">
-                            <tr>
-                                <th class="table-head-cell">Producto</th>
-                                <th class="table-head-cell">Fecha</th>
-                                <th class="table-head-cell">Saldo</th>
-                                <th class="table-head-cell">Proveedor</th>
-                            </tr>
+                        <tr>
+                            <th class="table-head-cell">Producto</th>
+                            <th class="table-head-cell">Fecha</th>
+                            <th class="table-head-cell">Días</th>
+                            <th class="table-head-cell">Saldo</th>
+                            <th class="table-head-cell">Proveedor</th>
+                        </tr>
                         </thead>
                         <tbody>
                             @forelse ($expiringBatches as $batch)
                                 <tr class="table-row">
                                     <td class="table-cell font-semibold text-slate-900">{{ $batch->product?->name }}</td>
                                     <td class="table-cell">{{ $batch->expires_at?->format('d/m/Y') }}</td>
+                                    <td class="table-cell">{{ max(0, (int) $batch->expires_at?->diffInDays(now())) }}</td>
                                     <td class="table-cell">{{ $batch->remaining_quantity }}</td>
                                     <td class="table-cell">{{ $batch->supplier_name ?: '-' }}</td>
                                 </tr>

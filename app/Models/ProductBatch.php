@@ -13,6 +13,7 @@ class ProductBatch extends Model
     protected $fillable = [
         'product_id',
         'user_id',
+        'supplier_id',
         'quantity',
         'remaining_quantity',
         'unit_cost',
@@ -40,5 +41,10 @@ class ProductBatch extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 }

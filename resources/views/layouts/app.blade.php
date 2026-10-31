@@ -63,6 +63,14 @@
             } elseif (request()->routeIs('categories.edit')) {
                 $breadcrumbs[] = ['label' => 'Editar categoría', 'route' => null];
             }
+        } elseif (request()->routeIs('suppliers.*')) {
+            $breadcrumbs[] = ['label' => 'Proveedores', 'route' => route('suppliers.index')];
+
+            if (request()->routeIs('suppliers.create')) {
+                $breadcrumbs[] = ['label' => 'Nuevo proveedor', 'route' => null];
+            } elseif (request()->routeIs('suppliers.edit')) {
+                $breadcrumbs[] = ['label' => 'Editar proveedor', 'route' => null];
+            }
         } elseif (request()->routeIs('users.*')) {
             $breadcrumbs[] = ['label' => 'Usuarios', 'route' => route('users.index')];
 

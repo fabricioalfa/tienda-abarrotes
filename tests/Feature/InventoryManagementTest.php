@@ -126,7 +126,6 @@ test('creating product with initial stock logs inventory movement', function () 
     $response = $this
         ->actingAs($admin)
         ->post(route('products.store'), [
-            'code' => '100010',
             'name' => 'Pechuga de pollo',
             'barcode' => '987654',
             'category_id' => $category->id,
@@ -141,6 +140,7 @@ test('creating product with initial stock logs inventory movement', function () 
     $product = Product::query()->where('name', 'Pechuga de pollo')->first();
 
     expect($product)->not->toBeNull();
+    expect($product->code)->not->toBeEmpty();
     expect((float) $product->stock)->toBe(8.25);
 
     $movement = InventoryMovement::query()->where('product_id', $product->id)->first();
@@ -157,7 +157,6 @@ test('admin can register product with code barcode category and quarter price', 
     $response = $this
         ->actingAs($admin)
         ->post(route('products.store'), [
-            'code' => '100011',
             'name' => 'Carne especial',
             'barcode' => '77990011',
             'category_id' => $category->id,
@@ -169,11 +168,65 @@ test('admin can register product with code barcode category and quarter price', 
 
     $response->assertSessionHasNoErrors();
 
-    $product = Product::query()->where('code', '100011')->first();
+    $product = Product::query()->where('name', 'Carne especial')->first();
 
     expect($product)->not->toBeNull();
+    expect($product->code)->not->toBeEmpty();
     expect($product->barcode)->toBe('77990011');
     expect($product->category_id)->toBe($category->id);
     expect($product->weight_unit)->toBe('quarter');
     expect((float) $product->price)->toBe(18.5);
+});
+
+test('it blocks product creation when purchase cost is higher than sale price', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+    $category = Category::create(['name' => 'Abarrotes']);
+
+    $response = $this
+        ->actingAs($admin)
+        ->from(route('products.create'))
+        ->post(route('products.store'), [
+            'name' => 'Producto costoso',
+            'category_id' => $category->id,
+            'type_key' => 'unit',
+            'price' => 10.00,
+            'initial_cost' => 15.00,
+            'is_active' => 1,
+        ]);
+
+    $response
+        ->assertSessionHasErrors('initial_cost')
+        ->assertRedirect(route('products.create'));
+
+    expect(Product::query()->where('name', 'Producto costoso')->exists())->toBeFalse();
+});
+
+test('it blocks inventory entry when unit cost is higher than sale price', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+    $category = Category::create(['name' => 'Abarrotes']);
+
+    $product = Product::create([
+        'name' => 'Arroz',
+        'category_id' => $category->id,
+        'sale_type' => Product::SALE_TYPE_UNIT,
+        'price' => 5.00,
+        'stock' => 0,
+        'is_active' => true,
+    ]);
+
+    $response = $this
+        ->actingAs($admin)
+        ->from(route('inventory.index'))
+        ->post(route('inventory.entries.store'), [
+            'product_id' => $product->id,
+            'quantity' => 10,
+            'unit_cost' => 8.00,
+        ]);
+
+    $response
+        ->assertSessionHasErrors('unit_cost')
+        ->assertRedirect(route('inventory.index'));
+
+    expect((float) $product->fresh()->stock)->toBe(0.0);
+    expect(InventoryMovement::count())->toBe(0);
 });

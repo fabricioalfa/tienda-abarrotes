@@ -15,8 +15,22 @@
         <form method="POST" action="{{ route('products.update', $product) }}" class="form-card space-y-6"
               x-data="{
                 typeKey: '{{ $typeKey }}',
-                allowsPackage: {{ old('allows_package_sale', $product->allows_package_sale) ? 'true' : 'false' }},
-                trackExpiration: {{ old('track_expiration', $product->track_expiration) ? 'true' : 'false' }}
+                trackExpiration: {{ old('track_expiration', $product->track_expiration) ? 'true' : 'false' }},
+                presentations: @js(collect(old('presentations', $product->presentations->map(fn ($p) => [
+                    'name' => $p->name,
+                    'units' => $p->units_per_presentation,
+                    'price' => $p->price,
+                ])))->map(fn ($p) => [
+                    'name' => $p['name'] ?? '',
+                    'units' => $p['units'] ?? 1,
+                    'price' => $p['price'] ?? '',
+                ])->values()),
+                addPresentation() {
+                    this.presentations.push({ name: '', units: 1, price: '' });
+                },
+                removePresentation(i) {
+                    this.presentations.splice(i, 1);
+                }
               }">
             @csrf
             @method('PUT')
@@ -25,9 +39,8 @@
             <div class="form-grid">
                 <div>
                     <label class="field-label">Código del producto</label>
-                    <input type="text" name="code" value="{{ old('code', $product->code) }}" class="field-input" placeholder="Ej. 10001">
-                    <p class="field-help">Debe ser numérico y único. Puede usarse para lectura con código de barras.</p>
-                    @error('code') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                    <input type="text" value="{{ $product->code }}" class="field-input" readonly>
+                    <p class="field-help">El código se genera automáticamente y no se puede editar.</p>
                 </div>
 
                 <div>
@@ -74,6 +87,14 @@
                 </div>
 
                 <div>
+                    <label class="field-label">Costo de compra (Bs.)</label>
+                    <input type="number" step="0.01" min="0" name="purchase_price"
+                           value="{{ old('purchase_price', $product->purchase_price) }}" class="field-input" placeholder="0.00">
+                    <p class="field-help">No puede ser mayor al precio de venta.</p>
+                    @error('purchase_price') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
                     <label class="field-label">Stock mínimo</label>
                     <input type="number" step="0.001" min="0" name="minimum_stock"
                            value="{{ old('minimum_stock', $product->minimum_stock ?? 5) }}" class="field-input">
@@ -89,42 +110,62 @@
                 </div>
             </div>
 
-            {{-- Venta por paquete (solo unidades) --}}
+            {{-- Presentaciones múltiples (solo unidades) --}}
             <div x-show="typeKey === 'unit'" x-cloak>
-                <div class="form-check-card">
-                    <input type="checkbox" name="allows_package_sale" value="1" id="allows_package_sale"
-                           class="field-checkbox" x-model="allowsPackage"
-                           @checked(old('allows_package_sale', $product->allows_package_sale))>
-                    <label for="allows_package_sale" class="text-sm font-semibold text-blue-800">
-                        Permitir venta por paquete (caja, bolsa, docena, etc.)
-                    </label>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="field-label" style="margin:0">Presentaciones de venta</p>
+                        <p class="field-help">Opciones como medio maple, maple, caja, docena, etc. Se muestran en el POS al lado de "Unidad".</p>
+                    </div>
+                    <button type="button" class="btn-secondary" @click="addPresentation()">
+                        + Agregar presentación
+                    </button>
                 </div>
 
-                <div x-show="allowsPackage" x-cloak class="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                    <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-blue-600">Configuración de paquete</p>
-                    <div class="form-grid">
-                        <div>
-                            <label class="field-label">Nombre del paquete</label>
-                            <input type="text" name="package_name"
-                                   value="{{ old('package_name', $product->package_name) }}"
-                                   class="field-input" placeholder="Ej. Caja, Bolsa, Docena">
-                            @error('package_name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                @error('presentations') <p class="text-sm text-red-600 mt-2">{{ $message }}</p> @enderror
+
+                <div class="mt-4 space-y-3">
+                    <template x-for="(p, i) in presentations" :key="i">
+                        <div class="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                            <div class="form-grid" style="align-items:end">
+                                <div>
+                                    <label class="field-label">Nombre</label>
+                                    <input type="text" :name="`presentations[${i}][name]`" x-model="p.name"
+                                           class="field-input" placeholder="Ej. Medio maple, Maple, Caja">
+                                </div>
+                                <div>
+                                    <label class="field-label">Unidades por presentación</label>
+                                    <input type="number" min="1" step="1" :name="`presentations[${i}][units]`"
+                                           x-model="p.units" class="field-input" placeholder="Ej. 15">
+                                </div>
+                                <div>
+                                    <label class="field-label">Precio (Bs.)</label>
+                                    <input type="number" min="0" step="0.01" :name="`presentations[${i}][price]`"
+                                           x-model="p.price" class="field-input" placeholder="Ej. 15.00">
+                                </div>
+                                <div>
+                                    <button type="button" class="btn-secondary" @click="removePresentation(i)">
+                                        Quitar
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label class="field-label">Unidades por paquete</label>
-                            <input type="number" min="1" step="1" name="units_per_package"
-                                   value="{{ old('units_per_package', $product->units_per_package) }}"
-                                   class="field-input" placeholder="Ej. 12">
-                            @error('units_per_package') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="field-label">Precio del paquete (Bs.)</label>
-                            <input type="number" min="0" step="0.01" name="package_price"
-                                   value="{{ old('package_price', $product->package_price) }}"
-                                   class="field-input" placeholder="Ej. 60.00">
-                            @error('package_price') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
+                    </template>
+
+                    <p x-show="presentations.length === 0" class="text-sm text-slate-400">
+                        Sin presentaciones. El producto se venderá solo por unidad.
+                    </p>
+                </div>
+            </div>
+
+            {{-- Producto a granel (solo peso) --}}
+            <div x-show="typeKey !== 'unit'" x-cloak>
+                <div class="form-check-card">
+                    <input type="checkbox" name="is_bulk" value="1" id="is_bulk"
+                           class="field-checkbox" @checked(old('is_bulk', $product->is_bulk))>
+                    <label for="is_bulk" class="text-sm font-semibold text-blue-800">
+                        Producto a granel (permite escribir en Kg o en Bs. en el POS)
+                    </label>
                 </div>
             </div>
 

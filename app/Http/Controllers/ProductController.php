@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\InventoryMovement;
 use App\Models\Product;
+use App\Models\ProductPresentation;
 use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -63,6 +64,8 @@ class ProductController extends Controller
 
         $product = Product::create($data);
 
+        $this->syncPresentations($product, $data['presentations'] ?? []);
+
         if ($initialStock > 0) {
             $this->inventoryService->registerMovement(
                 product: $product,
@@ -94,6 +97,8 @@ class ProductController extends Controller
 
         $product->update($data);
 
+        $this->syncPresentations($product, $data['presentations'] ?? []);
+
         return redirect()->route('products.index')->with('status', 'Producto actualizado correctamente.');
     }
 
@@ -118,13 +123,6 @@ class ProductController extends Controller
         $request->merge(['type_key' => $typeKey]);
 
         $data = $request->validate([
-            'code' => [
-                'required',
-                'string',
-                'max:255',
-                'regex:/^[0-9]+$/',
-                Rule::unique('products', 'code')->ignore($product?->id),
-            ],
             'name' => ['required', 'string', 'max:255'],
             'barcode' => [
                 'nullable',
@@ -137,15 +135,22 @@ class ProductController extends Controller
             'price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
             'initial_stock' => [$isCreate ? 'nullable' : 'prohibited', 'numeric', 'min:0', 'max:9999999.999'],
             'initial_cost' => [$isCreate ? 'nullable' : 'prohibited', 'numeric', 'min:0', 'max:9999999.99'],
+            'purchase_price' => ['nullable', 'numeric', 'min:0', 'max:9999999.99'],
             'initial_expires_at' => [$isCreate ? 'nullable' : 'prohibited', 'date'],
             'minimum_stock' => ['nullable', 'numeric', 'min:0', 'max:9999999.999'],
             'track_expiration' => ['nullable', 'boolean'],
+            'is_bulk' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
             // Campos de venta por paquete — solo aplican a productos por unidad
             'allows_package_sale' => ['nullable', 'boolean'],
             'package_name' => ['nullable', 'string', 'max:100'],
             'units_per_package' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'package_price' => ['nullable', 'numeric', 'min:0', 'max:9999999.99'],
+            // Presentaciones múltiples (ej. medio maple, maple, caja, etc.)
+            'presentations' => ['nullable', 'array', 'max:10'],
+            'presentations.*.name' => ['required', 'string', 'max:100'],
+            'presentations.*.units' => ['required', 'integer', 'min:1', 'max:9999'],
+            'presentations.*.price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
         ]);
 
         if ($data['type_key'] === 'unit') {
@@ -160,11 +165,12 @@ class ProductController extends Controller
         } else {
             $data['sale_type'] = Product::SALE_TYPE_WEIGHT;
             $data['weight_unit'] = $data['type_key'];
-            // Weight products cannot use package sale mode
+            // Weight products cannot use package sale mode or presentations
             $data['allows_package_sale'] = false;
             $data['package_name'] = null;
             $data['units_per_package'] = null;
             $data['package_price'] = null;
+            $data['presentations'] = [];
         }
 
         // Package sale fields (only for unit products) — valores ya validados en $data
@@ -181,13 +187,32 @@ class ProductController extends Controller
             }
         }
 
+        $cost = $isCreate
+            ? ($data['initial_cost'] ?? null)
+            : ($request->has('purchase_price') ? $data['purchase_price'] : $product?->purchase_price);
+
+        if ($cost !== null && (float) $cost > (float) $data['price']) {
+            throw ValidationException::withMessages([
+                $isCreate ? 'initial_cost' : 'purchase_price' => 'El costo de compra no puede ser mayor al precio de venta.',
+            ]);
+        }
+
         $data['brand'] = null;
         $data['supplier_name'] = null;
         $data['description'] = null;
         $data['track_expiration'] = $request->boolean('track_expiration');
-        $data['barcode'] = ($data['barcode'] ?? null) ?: $data['code'];
+        $data['is_bulk'] = $data['sale_type'] === Product::SALE_TYPE_WEIGHT && $request->boolean('is_bulk');
+        $data['barcode'] = ($data['barcode'] ?? null) ?: null;
         $data['sale_price'] = $data['price'];
-        $data['purchase_price'] = isset($data['initial_cost']) ? (float) $data['initial_cost'] : 0;
+
+        if ($isCreate) {
+            $data['purchase_price'] = (float) ($cost ?? 0);
+        } elseif ($request->has('purchase_price')) {
+            $data['purchase_price'] = (float) ($cost ?? 0);
+        } else {
+            unset($data['purchase_price']);
+        }
+
         $data['unit'] = $data['type_key'] === 'unit' ? 'unidad' : $data['type_key'];
         $data['category'] = Category::query()->where('id', $data['category_id'])->value('name');
 
@@ -205,5 +230,40 @@ class ProductController extends Controller
         $data['is_active'] = $request->boolean('is_active');
 
         return $data;
+    }
+
+    protected function syncPresentations(Product $product, array $presentations): void
+    {
+        $keepNames = [];
+
+        foreach ($presentations as $index => $presentation) {
+            $name = trim((string) ($presentation['name'] ?? ''));
+            $units = (int) ($presentation['units'] ?? 0);
+            $price = (float) ($presentation['price'] ?? 0);
+
+            if ($name === '' || $units < 1 || $price < 0) {
+                continue;
+            }
+
+            if (in_array($name, $keepNames, true)) {
+                continue;
+            }
+
+            $keepNames[] = $name;
+
+            ProductPresentation::updateOrCreate(
+                ['product_id' => $product->id, 'name' => $name],
+                [
+                    'units_per_presentation' => $units,
+                    'price' => $price,
+                    'sort_order' => $index,
+                    'is_active' => true,
+                ],
+            );
+        }
+
+        ProductPresentation::where('product_id', $product->id)
+            ->when($keepNames !== [], fn ($query) => $query->whereNotIn('name', $keepNames))
+            ->delete();
     }
 }

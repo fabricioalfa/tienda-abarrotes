@@ -11,15 +11,19 @@ class InventoryMovement extends Model
     use HasFactory;
 
     public const TYPE_ENTRY = 'entry';
+
     public const TYPE_SALE = 'sale';
+
     public const TYPE_ADJUSTMENT = 'adjustment';
 
     public const DIRECTION_IN = 'in';
+
     public const DIRECTION_OUT = 'out';
 
     protected $fillable = [
         'product_id',
         'user_id',
+        'supplier_id',
         'movement_type',
         'direction',
         'quantity',
@@ -50,6 +54,11 @@ class InventoryMovement extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function typeLabel(): string

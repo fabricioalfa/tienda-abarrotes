@@ -11,9 +11,17 @@
             'units_per_package' => (int) ($p->units_per_package ?? 1),
             'sale_type'         => $p->sale_type,
             'weight_unit'       => $p->weight_unit ?? 'kg',
+            'is_bulk'           => $p->is_bulk ? 1 : 0,
+            'supports_lb_units' => $p->supportsPoundSaleUnits() ? 1 : 0,
             'stock'             => (float) $p->stock,
             'stock_label'       => $p->stockBreakdownLabel(),
             'category'          => $p->category?->name ?? 'General',
+            'presentations'     => $p->activePresentations->map(fn ($pres) => [
+                'id'    => $pres->id,
+                'name'  => $pres->name,
+                'units' => (int) $pres->units_per_presentation,
+                'price' => (float) $pres->price,
+            ])->values(),
         ];
     });
 @endphp
@@ -93,6 +101,7 @@
         }
         .pos-search-item:last-child { border-bottom: none; }
         .pos-search-item:hover { background: #eff6ff; }
+        .pos-search-item-active { background: #dbeafe !important; }
         .pos-search-item-name { font-size: .85rem; font-weight: 600; color: #1e293b; }
         .pos-search-item-sub  { font-size: .72rem; color: #94a3b8; margin-top: 1px; }
         .pos-search-item-price{ font-size: .9rem; font-weight: 800; color: #1d4ed8; }
@@ -246,6 +255,39 @@
             font-family: inherit;
         }
 
+        /* Unidad de libra */
+        .pos-lb-unit-sel {
+            font-size: .75rem; border: 1px solid #e2e8f0; border-radius: 6px;
+            padding: .25rem .4rem; color: #334155; background: #f8fafc; cursor: pointer;
+            font-family: inherit; font-weight: 600;
+        }
+
+        /* Entrada dual granel Kg↔Bs */
+        .pos-item-row-bulk {
+            grid-template-columns: 1fr auto auto auto auto;
+        }
+        .pos-bulk-row {
+            display: flex; align-items: flex-end; gap: .6rem; margin-top: .5rem;
+        }
+        .pos-bulk-field { display: flex; flex-direction: column; gap: .15rem; }
+        .pos-bulk-field label {
+            font-size: .65rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .08em; color: #64748b;
+        }
+        .pos-bulk-input {
+            width: 110px; padding: .5rem .65rem; border-radius: 8px;
+            border: 2px solid #dbeafe; font-size: 1rem; font-weight: 700;
+            font-family: inherit; color: #1e293b; outline: none; box-sizing: border-box;
+        }
+        .pos-bulk-input:focus { border-color: #3b82f6; background: white; }
+        .pos-bulk-swap {
+            font-size: 1.3rem; font-weight: 800; color: #3b82f6; padding-bottom: .3rem;
+        }
+        .pos-bulk-price {
+            font-size: .72rem; font-weight: 700; color: #64748b;
+            padding-bottom: .55rem; white-space: nowrap;
+        }
+
         /* Alerts */
         .pos-alert { padding: .6rem 1rem; font-size: .78rem; font-weight: 600; }
         .pos-alert-error { background: #fee2e2; color: #991b1b; }
@@ -256,6 +298,13 @@
 
 <script>
     const PRODUCTS_DATA = @json($productsJson->values()->all());
+</script>
+<script>
+    const LB_UNITS = {
+        lb:        { label: 'Libra', factor: 1 },
+        cuartilla: { label: 'Cuartilla (6 lb)', factor: 6 },
+        arroba:    { label: 'Arroba (24 lb)', factor: 24 },
+    };
 </script>
 
 <form method="POST" action="{{ route('sales.store') }}" id="sale-form">
@@ -544,7 +593,15 @@
 
     function unitPrice(cartItem) {
         const p = cartItem.product;
-        return cartItem.mode === 'package' && p.package_enabled ? p.package_price : p.price;
+        if (cartItem.mode === 'presentation' && cartItem.presentationId) {
+            const pres = (p.presentations || []).find(pr => pr.id === cartItem.presentationId);
+            if (pres) return pres.price;
+        }
+        if (cartItem.mode === 'package' && p.package_enabled) return p.package_price;
+        if (cartItem.saleUnit && LB_UNITS[cartItem.saleUnit]) {
+            return p.price * LB_UNITS[cartItem.saleUnit].factor;
+        }
+        return p.price;
     }
 
     function recalc() {
@@ -599,6 +656,12 @@
             add(`items[${i}][product_id]`, c.product.id);
             add(`items[${i}][quantity]`,   c.qty);
             add(`items[${i}][pricing_mode]`, c.mode);
+            if (c.mode === 'presentation' && c.presentationId) {
+                add(`items[${i}][presentation_id]`, c.presentationId);
+            }
+            if (c.saleUnit) {
+                add(`items[${i}][sale_unit]`, c.saleUnit);
+            }
         });
 
         function add(name, value) {
@@ -610,7 +673,6 @@
 
     /* ── Renderizado del carrito ─────────────────────── */
     function renderCart() {
-        // Quita filas anteriores (deja el empty state)
         itemsArea.querySelectorAll('.pos-item-row').forEach(r => r.remove());
 
         if (cart.length === 0) {
@@ -624,30 +686,77 @@
             const price    = unitPrice(c);
             const subtotal = price * c.qty;
             const isWeight = p.sale_type === 'weight';
+            const isBulk   = p.is_bulk === 1 && isWeight;
+            const isLb     = p.supports_lb_units === 1;
             const pkgOk    = p.package_enabled === 1;
+            const presList = p.presentations || [];
 
-            const row = document.createElement('div');
-            row.className = 'pos-item-row';
-            row.innerHTML = `
-                <div>
-                    <div class="pos-item-name">${p.name}</div>
-                    <div class="pos-item-mode">
-                        ${pkgOk ? `<select class="pos-mode-sel" data-idx="${i}">
-                            <option value="standard" ${c.mode==='standard'?'selected':''}>Unidad</option>
-                            <option value="package"  ${c.mode==='package' ?'selected':''}>Paquete (${p.package_name})</option>
-                        </select>` : `<span style="font-size:.7rem;color:#94a3b8">${isWeight ? `Por peso (${p.weight_unit})` : 'Por unidad'}</span>`}
+            const modeOptions = () => {
+                let opts = `<option value="standard" ${c.mode==='standard'?'selected':''}>Unidad</option>`;
+                if (pkgOk) {
+                    opts += `<option value="package" ${c.mode==='package'?'selected':''}>Paquete (${p.package_name})</option>`;
+                }
+                presList.forEach(pr => {
+                    const sel = (c.mode==='presentation' && c.presentationId===pr.id) ? 'selected' : '';
+                    opts += `<option value="presentation:${pr.id}" ${sel}>${pr.name} (${pr.units} unid) — Bs. ${fmtN(pr.price)}</option>`;
+                });
+                return opts;
+            };
+
+            const hasModes = pkgOk || presList.length > 0;
+
+            /* Selector de unidad de libra */
+            const lbUnitSel = isLb ? `
+                <select class="pos-lb-unit-sel" data-idx="${i}">
+                    ${Object.entries(LB_UNITS).map(([k, u]) =>
+                        `<option value="${k}" ${(c.saleUnit||'lb')===k?'selected':''}>${u.label}</option>`
+                    ).join('')}
+                </select>` : '';
+
+            /* Entrada dual Kg↔Bs para producto a granel */
+            const bulkInputs = isBulk ? `
+                <div class="pos-bulk-row">
+                    <div class="pos-bulk-field">
+                        <label>Cantidad (${p.weight_unit})</label>
+                        <input type="number" step="0.001" min="0.001" value="${c.qty}"
+                               class="pos-bulk-input" data-idx="${i}" data-field="qty">
                     </div>
-                </div>
+                    <div class="pos-bulk-swap">↔</div>
+                    <div class="pos-bulk-field">
+                        <label>Monto (Bs.)</label>
+                        <input type="number" step="0.01" min="0" value="${fmtN(price * c.qty)}"
+                               class="pos-bulk-input" data-idx="${i}" data-field="amount">
+                    </div>
+                    <div class="pos-bulk-price">Bs. ${fmtN(price)}/${p.weight_unit}</div>
+                </div>` : '';
+
+            /* Controles de cantidad para no-granel */
+            const qtyControls = !isBulk ? `
                 <div class="pos-item-qty-wrap">
+                    ${lbUnitSel}
                     <button type="button" class="pos-qty-btn pos-qty-btn-minus" data-idx="${i}">−</button>
-                    <input type="${isWeight ? 'number' : 'number'}"
+                    <input type="number"
                            step="${isWeight ? '0.001' : '1'}"
                            min="${isWeight ? '0.001' : '1'}"
                            value="${c.qty}"
                            class="pos-qty-input"
                            data-idx="${i}">
                     <button type="button" class="pos-qty-btn pos-qty-btn-plus" data-idx="${i}">+</button>
+                </div>` : '';
+
+            const row = document.createElement('div');
+            row.className = 'pos-item-row' + (isBulk ? ' pos-item-row-bulk' : '');
+            row.innerHTML = `
+                <div>
+                    <div class="pos-item-name">${p.name}</div>
+                    <div class="pos-item-mode">
+                        ${hasModes ? `<select class="pos-mode-sel" data-idx="${i}">
+                            ${modeOptions()}
+                        </select>` : `<span style="font-size:.7rem;color:#94a3b8">${isWeight ? `Por peso (${p.weight_unit})` : 'Por unidad'}</span>`}
+                    </div>
+                    ${bulkInputs}
                 </div>
+                ${qtyControls}
                 <div class="pos-item-price">Bs. ${fmtN(price)}</div>
                 <div class="pos-item-subtotal">${fmt(subtotal)}</div>
                 <button type="button" class="pos-item-remove" data-idx="${i}" title="Quitar">
@@ -657,32 +766,62 @@
                 </button>
             `;
 
-            // Botones qty
-            row.querySelector(`.pos-qty-btn-minus[data-idx="${i}"]`).addEventListener('click', () => {
+            /* Botones qty */
+            const minusBtn = row.querySelector(`.pos-qty-btn-minus[data-idx="${i}"]`);
+            const plusBtn  = row.querySelector(`.pos-qty-btn-plus[data-idx="${i}"]`);
+            const qtyInput = row.querySelector(`.pos-qty-input[data-idx="${i}"]`);
+
+            if (minusBtn) minusBtn.addEventListener('click', () => {
                 const step = isWeight ? 0.25 : 1;
                 cart[i].qty = Math.max(isWeight ? 0.001 : 1, parseFloat((cart[i].qty - step).toFixed(3)));
                 recalc();
             });
-            row.querySelector(`.pos-qty-btn-plus[data-idx="${i}"]`).addEventListener('click', () => {
+            if (plusBtn) plusBtn.addEventListener('click', () => {
                 const step = isWeight ? 0.25 : 1;
                 cart[i].qty = parseFloat((cart[i].qty + step).toFixed(3));
                 recalc();
             });
-
-            // Input manual qty
-            row.querySelector(`.pos-qty-input[data-idx="${i}"]`).addEventListener('change', e => {
+            if (qtyInput) qtyInput.addEventListener('change', e => {
                 const v = parseFloat(e.target.value);
                 if (v > 0) { cart[i].qty = v; recalc(); }
             });
 
-            // Modo
-            const modeSel = row.querySelector(`.pos-mode-sel[data-idx="${i}"]`);
-            if (modeSel) modeSel.addEventListener('change', e => {
-                cart[i].mode = e.target.value;
+            /* Selector unidad libra */
+            const lbSel = row.querySelector(`.pos-lb-unit-sel[data-idx="${i}"]`);
+            if (lbSel) lbSel.addEventListener('change', e => {
+                cart[i].saleUnit = e.target.value;
                 recalc();
             });
 
-            // Quitar
+            /* Entrada dual granel */
+            row.querySelectorAll(`.pos-bulk-input[data-idx="${i}"]`).forEach(inp => {
+                inp.addEventListener('change', e => {
+                    const field = e.target.dataset.field;
+                    const v = parseFloat(e.target.value) || 0;
+                    if (field === 'qty') {
+                        if (v > 0) { cart[i].qty = v; recalc(); }
+                    } else {
+                        const up = unitPrice(cart[i]);
+                        if (up > 0 && v >= 0) { cart[i].qty = parseFloat((v / up).toFixed(3)); recalc(); }
+                    }
+                });
+            });
+
+            /* Modo */
+            const modeSel = row.querySelector(`.pos-mode-sel[data-idx="${i}"]`);
+            if (modeSel) modeSel.addEventListener('change', e => {
+                const val = e.target.value;
+                if (val.startsWith('presentation:')) {
+                    cart[i].mode = 'presentation';
+                    cart[i].presentationId = parseInt(val.split(':')[1], 10);
+                } else {
+                    cart[i].mode = val;
+                    cart[i].presentationId = null;
+                }
+                recalc();
+            });
+
+            /* Quitar */
             row.querySelector(`.pos-item-remove[data-idx="${i}"]`).addEventListener('click', () => {
                 cart.splice(i, 1);
                 recalc();
@@ -698,7 +837,9 @@
         if (existing >= 0 && product.sale_type === 'unit') {
             cart[existing].qty++;
         } else {
-            cart.push({ product, qty: 1, mode: 'standard' });
+            const item = { product, qty: 1, mode: 'standard' };
+            if (product.supports_lb_units === 1) item.saleUnit = 'lb';
+            cart.push(item);
         }
         recalc();
         searchEl.value = '';
@@ -737,26 +878,62 @@
     }
 
     let searchTimer;
+    let dropdownIndex = -1;
+
+    function updateDropdownHighlight() {
+        const items = dropdownEl.querySelectorAll('.pos-search-item');
+        items.forEach((el, i) => {
+            el.classList.toggle('pos-search-item-active', i === dropdownIndex);
+        });
+        if (dropdownIndex >= 0 && items[dropdownIndex]) {
+            items[dropdownIndex].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
     searchEl.addEventListener('input', () => {
         clearTimeout(searchTimer);
         const q = searchEl.value.trim();
-        if (!q) { dropdownEl.style.display = 'none'; return; }
+        if (!q) { dropdownEl.style.display = 'none'; dropdownIndex = -1; return; }
         searchTimer = setTimeout(() => {
-            // Barcode exacto → agrega directo
             const exact = PRODUCTS_DATA.find(p => p.barcode && p.barcode === q);
             if (exact) { addProduct(exact); return; }
             renderDropdown(findProducts(q));
+            dropdownIndex = -1;
         }, 180);
     });
 
     searchEl.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
+        const items = dropdownEl.querySelectorAll('.pos-search-item');
+        const isOpen = dropdownEl.style.display === 'block' && items.length > 0;
+
+        if (e.key === 'ArrowDown') {
             e.preventDefault();
-            const results = findProducts(searchEl.value);
-            if (results.length === 1) addProduct(results[0]);
-            else if (results.length > 1) renderDropdown(results);
+            if (!isOpen) {
+                const results = findProducts(searchEl.value);
+                if (results.length) renderDropdown(results);
+            } else {
+                dropdownIndex = Math.min(dropdownIndex + 1, items.length - 1);
+                updateDropdownHighlight();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (isOpen) {
+                dropdownIndex = Math.max(dropdownIndex - 1, 0);
+                updateDropdownHighlight();
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (isOpen && dropdownIndex >= 0 && items[dropdownIndex]) {
+                items[dropdownIndex].click();
+            } else {
+                const results = findProducts(searchEl.value);
+                if (results.length === 1) addProduct(results[0]);
+                else if (results.length > 1) { renderDropdown(results); dropdownIndex = 0; updateDropdownHighlight(); }
+            }
+        } else if (e.key === 'Escape') {
+            dropdownEl.style.display = 'none';
+            dropdownIndex = -1;
         }
-        if (e.key === 'Escape') dropdownEl.style.display = 'none';
     });
 
     document.addEventListener('click', e => {

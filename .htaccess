@@ -2,9 +2,6 @@
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
-
     RewriteEngine On
-
-    # Redirige todas las peticiones a la carpeta /public
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

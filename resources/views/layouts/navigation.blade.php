@@ -13,6 +13,7 @@
         ['label' => 'Caja', 'route' => route('cash-registers.index'), 'active' => request()->routeIs('cash-registers.*'), 'icon' => 'M21 8.25v7.5A2.25 2.25 0 0 1 18.75 18H5.25A2.25 2.25 0 0 1 3 15.75v-7.5A2.25 2.25 0 0 1 5.25 6h13.5A2.25 2.25 0 0 1 21 8.25ZM7.5 12h9'],
         ['label' => 'Reportes', 'route' => route('reports.sales'), 'active' => request()->routeIs('reports.*'), 'icon' => 'M3 13.5h3.75v7.5H3v-7.5Zm7.125-6h3.75V21h-3.75V7.5Zm7.125-4.5H21V21h-3.75V3Z'],
         $user->isAdmin() ? ['label' => 'Categorias', 'route' => route('categories.index'), 'active' => request()->routeIs('categories.*'), 'icon' => 'M3.75 4.5h6.75v6.75H3.75V4.5Zm9.75 0h6.75v6.75H13.5V4.5Zm-9.75 9.75h6.75V21H3.75v-6.75Zm9.75 0h6.75V21H13.5v-6.75Z'] : null,
+        $user->isAdmin() ? ['label' => 'Proveedores', 'route' => route('suppliers.index'), 'active' => request()->routeIs('suppliers.*'), 'icon' => 'M12 4.354a4 4 0 110 8 4 4 0 010-8Zm0 2.161v2.311l4.113-2.227L12 13l-4.113-2.661zM12 19l4-2.25-4-2.25L12 14.5l4 2.25L12 19Z'] : null,
         $user->isAdmin() ? ['label' => 'Usuarios', 'route' => route('users.index'), 'active' => request()->routeIs('users.*'), 'icon' => 'M15 19.128a9.38 9.38 0 0 0-3-.878 9.38 9.38 0 0 0-3 .878m6 0a3 3 0 1 0-6 0m6 0H18a2.25 2.25 0 0 1 2.25 2.25V21m-8.25-11.25a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.5 8.25a2.25 2.25 0 0 0-2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V21m-13.5 0v-.75A2.25 2.25 0 0 1 9 18h.75'] : null,
     ]));
 @endphp

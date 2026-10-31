@@ -92,12 +92,14 @@
             <div class="mt-5 overflow-x-auto">
                 <table class="table-shell receipt-items print:w-full" style="border-collapse:collapse">
                     <thead class="table-head">
-                        <tr>
-                            <th class="table-head-cell print:text-left print:border-b print:border-black print:pb-1">Producto</th>
-                            <th class="table-head-cell print:text-right print:border-b print:border-black print:pb-1">Cant.</th>
-                            <th class="table-head-cell print:text-right print:border-b print:border-black print:pb-1">Precio</th>
-                            <th class="table-head-cell print:text-right print:border-b print:border-black print:pb-1">Subtotal</th>
-                        </tr>
+                            <tr>
+                                <th class="table-head-cell print:text-left print:border-b print:border-black print:pb-1">Producto</th>
+                                <th class="table-head-cell print:text-right print:border-b print:border-black print:pb-1">Cant.</th>
+                                <th class="table-head-cell print:text-right print:border-b print:border-black print:pb-1">Precio</th>
+                                <th class="table-head-cell print:text-right print:border-b print:border-black print:pb-1 print:hidden">Costo</th>
+                                <th class="table-head-cell print:text-right print:border-b print:border-black print:pb-1 print:hidden">Ganancia</th>
+                                <th class="table-head-cell print:text-right print:border-b print:border-black print:pb-1">Subtotal</th>
+                            </tr>
                     </thead>
                     <tbody>
                         @foreach ($sale->items as $item)
@@ -105,6 +107,8 @@
                                 <td class="table-cell print:py-1">{{ $item->product_name }}</td>
                                 <td class="table-cell print:text-right print:py-1">{{ $item->quantityLabel() }}</td>
                                 <td class="table-cell print:text-right print:py-1">Bs. {{ number_format((float) $item->unit_price, 2) }}</td>
+                                <td class="table-cell print:text-right print:py-1 print:hidden">Bs. {{ number_format((float) ($item->cost_price ?? 0), 2) }}</td>
+                                <td class="table-cell print:text-right print:py-1 print:hidden font-semibold">{{ number_format((float) $item->line_total - ((float) ($item->cost_price ?? 0) * (float) $item->stock_quantity), 2) }}</td>
                                 <td class="table-cell font-semibold text-slate-900 print:text-right print:py-1">Bs. {{ number_format((float) $item->line_total, 2) }}</td>
                             </tr>
                         @endforeach

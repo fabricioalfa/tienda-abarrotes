@@ -40,15 +40,23 @@ class Product extends Model
         'stock',
         'minimum_stock',
         'track_expiration',
+        'is_bulk',
         'is_active',
     ];
 
     protected static function booted(): void
     {
-        static::creating(function (Product $product): void {
-            if (! filled($product->code)) {
-                $product->code = static::generateUniqueCode();
+        static::created(function (Product $product): void {
+            if (filled($product->code)) {
+                return;
             }
+
+            $code = static::generateUniqueCode($product->id);
+
+            $product->forceFill([
+                'code' => $code,
+                'barcode' => filled($product->barcode) ? $product->barcode : $code,
+            ])->saveQuietly();
         });
     }
 
@@ -63,6 +71,7 @@ class Product extends Model
             'minimum_stock' => 'decimal:3',
             'allows_package_sale' => 'boolean',
             'track_expiration' => 'boolean',
+            'is_bulk' => 'boolean',
             'is_active' => 'boolean',
         ];
     }
@@ -87,6 +96,16 @@ class Product extends Model
         return $this->hasMany(ProductBatch::class);
     }
 
+    public function presentations(): HasMany
+    {
+        return $this->hasMany(ProductPresentation::class)->orderBy('sort_order')->orderBy('units_per_presentation');
+    }
+
+    public function activePresentations(): HasMany
+    {
+        return $this->presentations()->where('is_active', true);
+    }
+
     public function saleTypeLabel(): string
     {
         return $this->sale_type === self::SALE_TYPE_WEIGHT ? 'Por peso' : 'Por unidad';
@@ -98,9 +117,27 @@ class Product extends Model
             'kg' => 'Kg',
             'g' => 'Gramos',
             'lb' => 'Libra',
-            'quarter' => 'Cuarta',
+            'quarter' => 'Cuartilla',
             default => null,
         };
+    }
+
+    /**
+     * Multiplicadores de las unidades de venta para productos en libras.
+     * Cuartilla = 6 lb, Arroba = 24 lb.
+     */
+    public static function poundSaleUnits(): array
+    {
+        return [
+            'lb' => ['label' => 'Libra', 'factor' => 1],
+            'cuartilla' => ['label' => 'Cuartilla (6 lb)', 'factor' => 6],
+            'arroba' => ['label' => 'Arroba (24 lb)', 'factor' => 24],
+        ];
+    }
+
+    public function supportsPoundSaleUnits(): bool
+    {
+        return $this->sale_type === self::SALE_TYPE_WEIGHT && $this->weight_unit === 'lb';
     }
 
     public function stockUnitLabel(): string
@@ -117,10 +154,13 @@ class Product extends Model
         };
     }
 
-    protected static function generateUniqueCode(): string
+    protected static function generateUniqueCode(?int $startAt = null): string
     {
+        $next = max((int) $startAt, 1);
+
         do {
-            $candidate = (string) random_int(10000000, 99999999);
+            $candidate = str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+            $next++;
         } while (static::query()->where('code', $candidate)->exists());
 
         return $candidate;
@@ -136,14 +176,23 @@ class Product extends Model
 
     public function stockBreakdownLabel(): string
     {
-        if (! $this->supportsPackageSale()) {
+        $unitsPerPackage = max((int) $this->units_per_package, 1);
+        $packageName = $this->package_name ?: 'paquete';
+
+        $presentation = $this->activePresentations()
+            ->orderByDesc('units_per_presentation')
+            ->first();
+
+        if ($presentation) {
+            $unitsPerPackage = max((int) $presentation->units_per_presentation, 1);
+            $packageName = $presentation->name;
+        } elseif (! $this->supportsPackageSale()) {
             return rtrim(rtrim(number_format((float) $this->stock, 3, '.', ''), '0'), '.').' '.$this->stockUnitLabel();
         }
 
         $stock = (int) floor((float) $this->stock);
-        $packages = intdiv($stock, max((int) $this->units_per_package, 1));
-        $units = $stock % max((int) $this->units_per_package, 1);
-        $packageName = $this->package_name ?: 'paquete';
+        $packages = intdiv($stock, $unitsPerPackage);
+        $units = $stock % $unitsPerPackage;
         $packageLabel = $packages === 1 ? $packageName : Str::plural($packageName, $packages);
 
         return "{$packages} {$packageLabel} y {$units} unidades";

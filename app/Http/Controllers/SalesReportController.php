@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\ProductBatch;
 use App\Models\Sale;
 use Illuminate\Http\Request;
@@ -56,14 +57,37 @@ class SalesReportController extends Controller
         $request->validate([
             'from' => ['nullable', 'date', 'before_or_equal:today'],
             'to' => ['nullable', 'date', 'after_or_equal:from', 'before_or_equal:today'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'q' => ['nullable', 'string', 'max:255'],
         ]);
 
         $from = $request->get('from', now()->startOfMonth()->toDateString());
         $to = $request->get('to', now()->toDateString());
+        $categoryId = $request->integer('category_id') ?: null;
+        $q = trim((string) $request->get('q'));
 
         $baseQuery = Sale::query()
             ->whereDate('sold_at', '>=', $from)
             ->whereDate('sold_at', '<=', $to);
+
+        $joined = false;
+        if ($categoryId || $q !== '') {
+            $baseQuery->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
+                ->join('products', 'products.id', '=', 'sale_items.product_id');
+            $joined = true;
+        }
+
+        if ($categoryId) {
+            $baseQuery->where('products.category_id', $categoryId);
+        }
+
+        if ($q !== '') {
+            $baseQuery->where('sale_items.product_name', 'like', "%{$q}%");
+        }
+
+        if ($joined) {
+            $baseQuery->distinct();
+        }
 
         $totalSalesAmount = (float) (clone $baseQuery)->sum('total');
         $totalSalesCount = (int) (clone $baseQuery)->count();
@@ -101,9 +125,14 @@ class SalesReportController extends Controller
             ->limit(10)
             ->get();
 
+        $categories = Category::orderBy('name')->get();
+
         return view('reports.sales', compact(
             'from',
             'to',
+            'categoryId',
+            'q',
+            'categories',
             'totalSalesAmount',
             'totalSalesCount',
             'averageTicket',

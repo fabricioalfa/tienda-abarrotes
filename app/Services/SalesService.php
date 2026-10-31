@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CashRegister;
 use App\Models\InventoryMovement;
 use App\Models\Product;
+use App\Models\ProductPresentation;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\User;
@@ -50,6 +51,9 @@ class SalesService
                 $product = Product::query()->findOrFail($item['product_id']);
                 $quantity = round((float) $item['quantity'], 3);
                 $pricingMode = $item['pricing_mode'] ?? 'standard';
+                $presentationId = $item['presentation_id'] ?? null;
+                $saleUnit = $item['sale_unit'] ?? null;
+                $presentation = null;
 
                 if ($quantity <= 0) {
                     throw ValidationException::withMessages([
@@ -63,10 +67,47 @@ class SalesService
                     ]);
                 }
 
-                // Verificación de stock suficiente ANTES de procesar (previene overselling)
-                $requiredStock = $pricingMode === 'package'
-                    ? round((float) $item['quantity'] * (int) $product->units_per_package, 3)
-                    : round((float) $item['quantity'], 3);
+                if ($pricingMode === 'presentation') {
+                    $presentation = ProductPresentation::query()
+                        ->where('product_id', $product->id)
+                        ->where('id', $presentationId)
+                        ->where('is_active', true)
+                        ->first();
+
+                    if (! $presentation) {
+                        throw ValidationException::withMessages([
+                            'items' => "La presentación seleccionada para {$product->name} no existe o no está activa.",
+                        ]);
+                    }
+
+                    if (floor($quantity) !== $quantity) {
+                        throw ValidationException::withMessages([
+                            'items' => "Las presentaciones de {$product->name} solo aceptan cantidades enteras.",
+                        ]);
+                    }
+                }
+
+                $unitsPerPresentation = $presentation ? (int) $presentation->units_per_presentation : 1;
+
+                /* Conversión de unidades de libra (cuartilla=6lb, arroba=24lb) */
+                $poundUnits = Product::poundSaleUnits();
+                $saleUnitFactor = 1;
+                if ($saleUnit !== null && $pricingMode === 'standard' && $product->supportsPoundSaleUnits()) {
+                    if (! isset($poundUnits[$saleUnit])) {
+                        throw ValidationException::withMessages([
+                            'items' => "La unidad de venta \"{$saleUnit}\" no es válida para {$product->name}.",
+                        ]);
+                    }
+                    $saleUnitFactor = $poundUnits[$saleUnit]['factor'];
+                } elseif ($saleUnit !== null && ! $product->supportsPoundSaleUnits()) {
+                    throw ValidationException::withMessages([
+                        'items' => "El producto {$product->name} no soporta venta en cuartilla o arroba.",
+                    ]);
+                }
+
+                $requiredStock = ($pricingMode === 'package' || $pricingMode === 'presentation')
+                    ? round((float) $item['quantity'] * ($pricingMode === 'package' ? (int) $product->units_per_package : $unitsPerPresentation), 3)
+                    : round((float) $item['quantity'] * $saleUnitFactor, 3);
 
                 if ($product->stock < $requiredStock) {
                     throw ValidationException::withMessages([
@@ -77,8 +118,14 @@ class SalesService
                 $unitPrice = (float) $product->price;
                 $stockQuantity = $quantity;
                 $unitLabel = $product->sale_type === Product::SALE_TYPE_UNIT ? 'unid' : ($product->weight_unit ?? 'kg');
+                $presentationName = null;
 
-                if ($pricingMode === 'package') {
+                if ($pricingMode === 'presentation') {
+                    $unitPrice = (float) $presentation->price;
+                    $stockQuantity = round($quantity * $unitsPerPresentation, 3);
+                    $unitLabel = $presentation->name;
+                    $presentationName = $presentation->name;
+                } elseif ($pricingMode === 'package') {
                     if (! $product->supportsPackageSale()) {
                         throw ValidationException::withMessages([
                             'items' => "El producto {$product->name} no tiene venta por paquete configurada.",
@@ -94,6 +141,10 @@ class SalesService
                     $unitPrice = (float) $product->package_price;
                     $stockQuantity = round($quantity * (int) $product->units_per_package, 3);
                     $unitLabel = $product->package_name ?: 'paquete';
+                } elseif ($saleUnit !== null && $saleUnitFactor > 1) {
+                    $unitPrice = round((float) $product->price * $saleUnitFactor, 2);
+                    $stockQuantity = round($quantity * $saleUnitFactor, 3);
+                    $unitLabel = $poundUnits[$saleUnit]['label'];
                 } elseif ($product->sale_type === Product::SALE_TYPE_UNIT && floor($quantity) !== $quantity) {
                     throw ValidationException::withMessages([
                         'items' => "El producto {$product->name} solo acepta cantidades enteras.",
@@ -108,6 +159,8 @@ class SalesService
                     'quantity' => $quantity,
                     'stock_quantity' => $stockQuantity,
                     'pricing_mode' => $pricingMode,
+                    'presentation_id' => $presentation?->id,
+                    'presentation_name' => $presentationName,
                     'unit_price' => $unitPrice,
                     'unit_label' => $unitLabel,
                     'line_total' => $lineTotal,
@@ -153,9 +206,12 @@ class SalesService
                     'sale_type' => $item['product']->sale_type,
                     'weight_unit' => $item['product']->weight_unit,
                     'unit_price' => $item['unit_price'],
+                    'cost_price' => (float) $item['product']->purchase_price,
                     'quantity' => $item['quantity'],
                     'stock_quantity' => $item['stock_quantity'],
                     'pricing_mode' => $item['pricing_mode'],
+                    'presentation_id' => $item['presentation_id'],
+                    'presentation_name' => $item['presentation_name'],
                     'unit_label' => $item['unit_label'],
                     'line_total' => $item['line_total'],
                 ]);
@@ -198,18 +254,22 @@ class SalesService
             $productId = (int) ($rawItem['product_id'] ?? 0);
             $quantity = (float) ($rawItem['quantity'] ?? 0);
             $pricingMode = (string) ($rawItem['pricing_mode'] ?? 'standard');
+            $presentationId = ! empty($rawItem['presentation_id']) ? (int) $rawItem['presentation_id'] : null;
+            $saleUnit = ! empty($rawItem['sale_unit']) ? (string) $rawItem['sale_unit'] : null;
 
             if ($productId <= 0 || $quantity <= 0) {
                 continue;
             }
 
-            $key = $productId.'|'.$pricingMode;
+            $key = $productId.'|'.$pricingMode.'|'.($presentationId ?? '').'|'.($saleUnit ?? '');
 
             if (! isset($merged[$key])) {
                 $merged[$key] = [
                     'product_id' => $productId,
                     'quantity' => 0,
                     'pricing_mode' => $pricingMode,
+                    'presentation_id' => $presentationId,
+                    'sale_unit' => $saleUnit,
                 ];
             }
 

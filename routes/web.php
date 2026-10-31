@@ -10,6 +10,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SalesReportController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index'])
         ->middleware('role:admin,caja')
         ->name('inventory.index');
+
+    Route::get('/inventory/entries', [InventoryController::class, 'entries'])
+        ->middleware('role:admin,caja')
+        ->name('inventory.entries');
+
+    Route::get('/inventory/adjustments', [InventoryController::class, 'adjustments'])
+        ->middleware('role:admin,caja')
+        ->name('inventory.adjustments');
+
+    Route::get('/inventory/movements', [InventoryController::class, 'movements'])
+        ->middleware('role:admin,caja')
+        ->name('inventory.movements');
 
     Route::post('/inventory/sales', [InventoryController::class, 'storeSale'])
         ->middleware('role:admin,caja')
@@ -88,6 +101,10 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/inventory/entries', [InventoryController::class, 'storeEntry'])->name('inventory.entries.store');
         Route::post('/inventory/adjustments', [InventoryController::class, 'storeAdjustment'])->name('inventory.adjustments.store');
+    });
+
+    Route::middleware('role:admin,caja')->group(function () {
+        Route::resource('suppliers', SupplierController::class)->except(['show']);
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

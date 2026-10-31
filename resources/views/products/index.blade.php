@@ -41,8 +41,8 @@
                 <table class="table-shell">
                     <thead class="table-head">
                         <tr>
-                            <th class="table-head-cell">Código</th>
                             <th class="table-head-cell">Producto</th>
+                            <th class="table-head-cell">Código</th>
                             <th class="table-head-cell">Categoría</th>
                             <th class="table-head-cell">Tipo</th>
                             <th class="table-head-cell">Código de barras</th>
@@ -55,8 +55,8 @@
                     <tbody>
                         @forelse ($products as $product)
                             <tr class="table-row">
-                                <td class="table-cell font-semibold text-slate-900">{{ $product->code ?: '-' }}</td>
                                 <td class="table-cell font-semibold text-slate-900">{{ $product->name }}</td>
+                                <td class="table-cell font-semibold text-slate-900">{{ $product->code ?: '-' }}</td>
                                 <td class="table-cell">{{ $product->getRelation('category')?->name ?? $product->category ?? '-' }}</td>
                                 <td class="table-cell">
                                     {{ $product->sale_type === 'unit' ? 'Unidad' : $product->weightUnitLabel() }}

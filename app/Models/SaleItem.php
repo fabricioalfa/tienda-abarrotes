@@ -17,9 +17,12 @@ class SaleItem extends Model
         'sale_type',
         'weight_unit',
         'unit_price',
+        'cost_price',
         'quantity',
         'stock_quantity',
         'pricing_mode',
+        'presentation_id',
+        'presentation_name',
         'unit_label',
         'line_total',
     ];
@@ -44,18 +47,23 @@ class SaleItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function presentation(): BelongsTo
+    {
+        return $this->belongsTo(ProductPresentation::class, 'presentation_id');
+    }
+
     public function quantityLabel(): string
     {
         if ($this->unit_label) {
             $decimals = $this->sale_type === Product::SALE_TYPE_UNIT ? 0 : 3;
 
-            return rtrim(rtrim(number_format((float) $this->quantity, $decimals, '.', ''), '0'), '.') . ' ' . $this->unit_label;
+            return rtrim(rtrim(number_format((float) $this->quantity, $decimals, '.', ''), '0'), '.').' '.$this->unit_label;
         }
 
         if ($this->sale_type === Product::SALE_TYPE_UNIT) {
-            return rtrim(rtrim(number_format((float) $this->quantity, 0, '.', ''), '0'), '.') . ' unid';
+            return rtrim(rtrim(number_format((float) $this->quantity, 0, '.', ''), '0'), '.').' unid';
         }
 
-        return rtrim(rtrim(number_format((float) $this->quantity, 3, '.', ''), '0'), '.') . ' ' . ($this->weight_unit ?? 'kg');
+        return rtrim(rtrim(number_format((float) $this->quantity, 3, '.', ''), '0'), '.').' '.($this->weight_unit ?? 'kg');
     }
 }

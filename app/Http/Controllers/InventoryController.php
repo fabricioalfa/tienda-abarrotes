@@ -6,7 +6,9 @@ use App\Models\Category;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\ProductBatch;
+use App\Models\Supplier;
 use App\Services\InventoryService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -44,15 +46,7 @@ class InventoryController extends Controller
             ->paginate(10, ['*'], 'products_page')
             ->withQueryString();
 
-        $movements = InventoryMovement::with(['product', 'user'])
-            ->when($movementType, fn ($query) => $query->where('movement_type', $movementType))
-            ->when($productId, fn ($query) => $query->where('product_id', $productId))
-            ->latest()
-            ->paginate(3, ['*'], 'movements_page')
-            ->withQueryString();
-
         $categories = Category::orderBy('name')->get();
-        $productOptions = Product::where('is_active', true)->orderBy('name')->get();
 
         $totalProducts = Product::count();
         $outOfStock = Product::where('stock', '<=', 0)->count();
@@ -73,19 +67,57 @@ class InventoryController extends Controller
 
         return view('inventory.index', compact(
             'products',
-            'movements',
             'categories',
-            'productOptions',
             'q',
             'categoryId',
-            'movementType',
-            'productId',
             'totalProducts',
             'outOfStock',
             'lowStock',
             'todayMovements',
             'expiringBatches',
             'costHistory',
+        ));
+    }
+
+    public function entries(): View
+    {
+        $productOptions = Product::where('is_active', true)->orderBy('name')->get();
+        $suppliers = Supplier::active()->orderBy('name')->get();
+
+        return view('inventory.entries', compact('productOptions', 'suppliers'));
+    }
+
+    public function adjustments(): View
+    {
+        $productOptions = Product::where('is_active', true)->orderBy('name')->get();
+
+        return view('inventory.adjustments', compact('productOptions'));
+    }
+
+    public function movements(Request $request)
+    {
+        $request->validate([
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'movement_type' => ['nullable', 'string', 'in:entry,sale,adjustment'],
+        ]);
+
+        $productId = $request->integer('product_id') ?: null;
+        $movementType = $request->get('movement_type');
+
+        $movements = InventoryMovement::with(['product', 'user', 'supplier'])
+            ->when($movementType, fn ($query) => $query->where('movement_type', $movementType))
+            ->when($productId, fn ($query) => $query->where('product_id', $productId))
+            ->latest()
+            ->paginate(15, ['*'], 'movements_page')
+            ->withQueryString();
+
+        $productOptions = Product::where('is_active', true)->orderBy('name')->get();
+
+        return view('inventory.movements', compact(
+            'movements',
+            'productOptions',
+            'productId',
+            'movementType',
         ));
     }
 
@@ -96,6 +128,7 @@ class InventoryController extends Controller
             'quantity' => ['required', 'numeric', 'gt:0'],
             'unit_cost' => ['nullable', 'numeric', 'min:0'],
             'expires_at' => ['nullable', 'date'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_name' => ['nullable', 'string', 'max:255'],
             'reason' => ['nullable', 'string', 'max:255'],
             'reference' => ['nullable', 'string', 'max:255'],
@@ -105,11 +138,20 @@ class InventoryController extends Controller
         $quantity = (float) $data['quantity'];
 
         $this->validateQuantityForSaleType($product, $quantity);
+        $this->validateUnitCost($product, $data['unit_cost'] ?? null);
 
         if ($product->track_expiration && empty($data['expires_at'])) {
             throw ValidationException::withMessages([
                 'expires_at' => 'La fecha de vencimiento es obligatoria para este producto.',
             ]);
+        }
+
+        $supplierId = $data['supplier_id'] ?? null;
+        $supplierName = $data['supplier_name'] ?? null;
+
+        if ($supplierId) {
+            $supplier = Supplier::findOrFail($supplierId);
+            $supplierName = $supplierName ?: $supplier->name;
         }
 
         $this->inventoryService->registerMovement(
@@ -122,10 +164,11 @@ class InventoryController extends Controller
             userId: Auth::id(),
             unitCost: isset($data['unit_cost']) ? (float) $data['unit_cost'] : null,
             expiresAt: $data['expires_at'] ?? null,
-            supplierName: $data['supplier_name'] ?? $product->supplier_name,
+            supplierName: $supplierName ?? $product->supplier_name,
+            supplierId: $supplierId,
         );
 
-        return back()->with('status', 'Entrada de inventario registrada correctamente.');
+        return redirect()->route('inventory.entries')->with('status', 'Entrada de inventario registrada correctamente.');
     }
 
     public function storeSale(Request $request): RedirectResponse
@@ -171,6 +214,10 @@ class InventoryController extends Controller
 
         $this->validateQuantityForSaleType($product, $quantity);
 
+        if ($data['direction'] === InventoryMovement::DIRECTION_IN) {
+            $this->validateUnitCost($product, $data['unit_cost'] ?? null);
+        }
+
         $this->inventoryService->registerMovement(
             product: $product,
             movementType: InventoryMovement::TYPE_ADJUSTMENT,
@@ -184,7 +231,7 @@ class InventoryController extends Controller
             supplierName: $product->supplier_name,
         );
 
-        return back()->with('status', 'Ajuste manual aplicado correctamente.');
+        return redirect()->route('inventory.adjustments')->with('status', 'Ajuste manual aplicado correctamente.');
     }
 
     protected function validateQuantityForSaleType(Product $product, float $quantity): void
@@ -192,6 +239,15 @@ class InventoryController extends Controller
         if ($product->sale_type === Product::SALE_TYPE_UNIT && floor($quantity) !== $quantity) {
             throw ValidationException::withMessages([
                 'quantity' => 'Los productos por unidad solo aceptan cantidades enteras.',
+            ]);
+        }
+    }
+
+    protected function validateUnitCost(Product $product, mixed $unitCost): void
+    {
+        if ($unitCost !== null && (float) $unitCost > (float) $product->price) {
+            throw ValidationException::withMessages([
+                'unit_cost' => 'El costo unitario no puede ser mayor al precio de venta del producto.',
             ]);
         }
     }
