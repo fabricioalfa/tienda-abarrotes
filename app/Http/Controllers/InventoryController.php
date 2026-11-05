@@ -65,11 +65,24 @@ class InventoryController extends Controller
             ->limit(10)
             ->get();
 
+        $movements = InventoryMovement::with(['product', 'user', 'supplier'])
+            ->when($movementType, fn ($query) => $query->where('movement_type', $movementType))
+            ->when($productId, fn ($query) => $query->where('product_id', $productId))
+            ->latest()
+            ->paginate(15, ['*'], 'movements_page')
+            ->withQueryString();
+
+        $productOptions = Product::where('is_active', true)->orderBy('name')->get();
+
         return view('inventory.index', compact(
             'products',
             'categories',
             'q',
             'categoryId',
+            'productId',
+            'movementType',
+            'movements',
+            'productOptions',
             'totalProducts',
             'outOfStock',
             'lowStock',

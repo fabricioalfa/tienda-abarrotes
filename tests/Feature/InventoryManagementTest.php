@@ -230,3 +230,42 @@ test('it blocks inventory entry when unit cost is higher than sale price', funct
     expect((float) $product->fresh()->stock)->toBe(0.0);
     expect(InventoryMovement::count())->toBe(0);
 });
+
+test('admin can open the inventory dashboard with movements list', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+    $category = Category::create(['name' => 'Carniceria']);
+
+    $product = Product::create([
+        'name' => 'Chuleta',
+        'category_id' => $category->id,
+        'sale_type' => Product::SALE_TYPE_WEIGHT,
+        'weight_unit' => 'kg',
+        'price' => 40.00,
+        'stock' => 3.000,
+        'is_active' => true,
+    ]);
+
+    InventoryMovement::create([
+        'product_id' => $product->id,
+        'user_id' => $admin->id,
+        'movement_type' => InventoryMovement::TYPE_ENTRY,
+        'direction' => InventoryMovement::DIRECTION_IN,
+        'quantity' => 3.000,
+        'stock_before' => 0,
+        'stock_after' => 3.000,
+        'reason' => 'Ingreso inicial',
+    ]);
+
+    $this
+        ->actingAs($admin)
+        ->get(route('inventory.index'))
+        ->assertOk()
+        ->assertSee('Chuleta')
+        ->assertSee('Historial de movimientos');
+
+    $this
+        ->actingAs($admin)
+        ->get(route('inventory.movements'))
+        ->assertOk()
+        ->assertSee('Chuleta');
+});
