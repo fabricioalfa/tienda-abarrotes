@@ -143,7 +143,7 @@ class SalesReportController extends Controller
         ));
     }
 
-    public function products(Request $request): View
+    public function products(Request $request)
     {
         // Validar fechas y categoría
         $request->validate([
@@ -188,7 +188,7 @@ class SalesReportController extends Controller
         ));
     }
 
-    public function expiring(Request $request): View
+    public function expiring(Request $request)
     {
         $from = $request->get('from', now()->startOfDay()->timestamp);
         $to = now()->startOfDay()->timestamp + 86400 * 10;

@@ -234,7 +234,7 @@ class InventoryController extends Controller
         }
     }
 
-    public function expiring(Request $request): View
+    public function expiring(Request $request)
     {
         $days = (int) floor(
             ($request->get('from', now()->startOfDay()->timestamp)
@@ -262,7 +262,7 @@ class InventoryController extends Controller
         ));
     }
 
-    public function costs(Request $request): View
+    public function costs(Request $request)
     {
         $productId = $request->integer('product_id') ?: null;
         $categoryId = $request->integer('category_id') ?: null;
