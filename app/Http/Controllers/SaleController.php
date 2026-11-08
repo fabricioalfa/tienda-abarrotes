@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashRegister;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Services\SalesService;
@@ -47,7 +48,7 @@ class SaleController extends Controller
         $todaySales = Sale::whereDate('sold_at', now()->toDateString())->count();
         $todayTotal = (float) Sale::whereDate('sold_at', now()->toDateString())->sum('total');
         $currentRegister = CashRegister::current();
-        $categories = App\Models\Category::orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
 
         return view('sales.index', compact('sales', 'q', 'from', 'to', 'categoryId', 'todaySales', 'todayTotal', 'currentRegister', 'categories'));
     }
