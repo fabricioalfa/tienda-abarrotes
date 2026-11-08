@@ -151,19 +151,19 @@ test('caja can sell weight product in arrobas converting to lb stock', function 
             'cash_received' => 300.00,
         ]);
 
-    $response->assertSessionHasNoErrors();
+$response->assertSessionHasNoErrors();
 
-    $sale = Sale::query()->latest('id')->first();
+$sale = Sale::query()->latest('id')->first();
 
-    // 1 arroba × 24 lb × Bs. 10/lb = Bs. 240
-    expect((float) $sale->total)->toBe(240.0);
-    // Stock descontado: 1 × 24 = 24 lb
-    expect((float) $product->fresh()->stock)->toBe(76.0);
+// 1 arroba × 25 lb × Bs. 10/lb = Bs. 250
+expect((float) $sale->total)->toBe(250.0);
+// Stock descontado: 1 × 25 = 25 lb
+expect((float) $product->fresh()->stock)->toBe(75.0);
 
-    $item = SaleItem::where('sale_id', $sale->id)->firstOrFail();
-    expect((float) $item->unit_price)->toBe(240.0); // 24 lb × Bs. 10
-    expect((float) $item->stock_quantity)->toBe(24.0);
-    expect($item->unit_label)->toBe('Arroba (24 lb)');
+$item = SaleItem::where('sale_id', $sale->id)->firstOrFail();
+expect((float) $item->unit_price)->toBe(250.0); // 25 lb × Bs. 10
+expect((float) $item->stock_quantity)->toBe(25.0);
+expect($item->unit_label)->toBe('Arroba (25 lb)');
 });
 
 test('sale_unit only works for lb products', function () {

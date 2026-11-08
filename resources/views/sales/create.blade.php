@@ -4,6 +4,7 @@
             'id'                => $p->id,
             'name'              => $p->name,
             'barcode'           => $p->barcode,
+            'code'              => $p->code,
             'price'             => (float) $p->price,
             'package_price'     => (float) ($p->package_price ?? 0),
             'package_name'      => $p->package_name ?? '',
@@ -303,7 +304,7 @@
     const LB_UNITS = {
         lb:        { label: 'Libra', factor: 1 },
         cuartilla: { label: 'Cuartilla (6 lb)', factor: 6 },
-        arroba:    { label: 'Arroba (24 lb)', factor: 24 },
+        arroba:    { label: 'Arroba (25 lb)', factor: 25 },
     };
 </script>
 
@@ -853,7 +854,8 @@
         if (!q) return [];
         return PRODUCTS_DATA.filter(p =>
             p.name.toLowerCase().includes(q) ||
-            (p.barcode && p.barcode.toLowerCase().includes(q))
+            (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+            (p.code && p.code.toLowerCase().includes(q))
         ).slice(0, 7);
     }
 
@@ -867,7 +869,9 @@
             el.innerHTML = `
                 <div>
                     <div class="pos-search-item-name">${p.name}</div>
-                    <div class="pos-search-item-sub">${p.barcode ? 'Cód: ' + p.barcode + ' · ' : ''}Stock: ${p.stock_label}</div>
+                    <div class="pos-search-item-sub">
+                    ${p.code ? 'Cod: ' + p.code + ' · ' : ''}${p.barcode ? 'CódB: ' + p.barcode + ' · ' : ''}Stock: ${p.stock_label}
+                </div>
                 </div>
                 <div class="pos-search-item-price">${fmt(p.price)}</div>
             `;

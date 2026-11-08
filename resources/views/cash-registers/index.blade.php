@@ -106,21 +106,21 @@
                 <div class="overflow-x-auto">
                     <table class="table-shell">
                         <thead class="table-head">
-                            <tr>
-                                <th class="table-head-cell">Fecha</th>
-                                <th class="table-head-cell">Responsable</th>
-                                <th class="table-head-cell">Apertura</th>
-                                <th class="table-head-cell">Esperado</th>
-                                <th class="table-head-cell">Contado</th>
-                                <th class="table-head-cell">Diferencia</th>
-                                <th class="table-head-cell">Estado</th>
-                            </tr>
+                    <tr>
+                        <th class="table-head-cell">Responsable</th>
+                        <th class="table-head-cell">Fecha</th>
+                        <th class="table-head-cell">Apertura</th>
+                        <th class="table-head-cell">Esperado</th>
+                        <th class="table-head-cell">Contado</th>
+                        <th class="table-head-cell">Diferencia</th>
+                        <th class="table-head-cell">Estado</th>
+                    </tr>
                         </thead>
                         <tbody>
                             @forelse ($history as $register)
                                 <tr class="table-row">
-                                    <td class="table-cell">{{ $register->opened_at->format('d/m/Y H:i') }}</td>
                                     <td class="table-cell">{{ $register->opener?->name }}</td>
+                                    <td class="table-cell">{{ $register->opened_at->format('d/m/Y H:i') }}</td>
                                     <td class="table-cell">Bs. {{ number_format((float) $register->opening_amount, 2) }}</td>
                                     <td class="table-cell">Bs. {{ number_format($register->expectedCash(), 2) }}</td>
                                     <td class="table-cell">{{ $register->counted_cash !== null ? 'Bs. ' . number_format((float) $register->counted_cash, 2) : '-' }}</td>

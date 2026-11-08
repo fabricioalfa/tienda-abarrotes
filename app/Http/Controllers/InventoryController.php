@@ -24,14 +24,10 @@ class InventoryController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:255'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
-            'product_id' => ['nullable', 'integer', 'exists:products,id'],
-            'movement_type' => ['nullable', 'string', 'in:entry,sale,adjustment'],
         ]);
 
         $q = trim((string) $request->get('q'));
         $categoryId = $request->integer('category_id') ?: null;
-        $productId = $request->integer('product_id') ?: null;
-        $movementType = $request->get('movement_type');
 
         $products = Product::with('category')
             ->when($q !== '', function ($query) use ($q) {
@@ -52,43 +48,16 @@ class InventoryController extends Controller
         $outOfStock = Product::where('stock', '<=', 0)->count();
         $lowStock = Product::where('stock', '>', 0)->where('stock', '<=', 5)->count();
         $todayMovements = InventoryMovement::whereDate('created_at', now()->toDateString())->count();
-        $expiringBatches = ProductBatch::with('product')
-            ->where('remaining_quantity', '>', 0)
-            ->whereNotNull('expires_at')
-            ->whereDate('expires_at', '<=', now()->addDays(10)->toDateString())
-            ->orderBy('expires_at')
-            ->limit(10)
-            ->get();
-        $costHistory = ProductBatch::with('product')
-            ->whereNotNull('unit_cost')
-            ->latest()
-            ->limit(10)
-            ->get();
-
-        $movements = InventoryMovement::with(['product', 'user', 'supplier'])
-            ->when($movementType, fn ($query) => $query->where('movement_type', $movementType))
-            ->when($productId, fn ($query) => $query->where('product_id', $productId))
-            ->latest()
-            ->paginate(15, ['*'], 'movements_page')
-            ->withQueryString();
-
-        $productOptions = Product::where('is_active', true)->orderBy('name')->get();
 
         return view('inventory.index', compact(
             'products',
             'categories',
             'q',
             'categoryId',
-            'productId',
-            'movementType',
-            'movements',
-            'productOptions',
             'totalProducts',
             'outOfStock',
             'lowStock',
             'todayMovements',
-            'expiringBatches',
-            'costHistory',
         ));
     }
 
@@ -263,5 +232,72 @@ class InventoryController extends Controller
                 'unit_cost' => 'El costo unitario no puede ser mayor al precio de venta del producto.',
             ]);
         }
+    }
+
+    public function expiring(Request $request): View
+    {
+        $days = (int) floor(
+            ($request->get('from', now()->startOfDay()->timestamp)
+             - now()->startOfDay()->timestamp) / 86400
+        );
+        $from = now()->startOfDay()->addDays(-$days);
+        $to = now()->startOfDay()->addDays($days);
+
+        $expiringBatches = ProductBatch::with(['product', 'supplier'])
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '>=', $from)
+            ->where('expires_at', '<=', $to)
+            ->where('remaining_quantity', '>', 0)
+            ->latest('expires_at')
+            ->paginate(20, ['*'], 'expiring_page')
+            ->withQueryString();
+
+        $suppliers = Supplier::active()->orderBy('name')->get();
+
+        return view('inventory.expiring', compact(
+            'expiringBatches',
+            'suppliers',
+            'from',
+            'to',
+        ));
+    }
+
+    public function costs(Request $request): View
+    {
+        $productId = $request->integer('product_id') ?: null;
+        $categoryId = $request->integer('category_id') ?: null;
+        $supplierId = $request->integer('supplier_id') ?: null;
+        $from = $request->get('from');
+        $to = $request->get('to');
+
+        $costQuery = ProductBatch::with(['product', 'supplier'])
+            ->whereNotNull('unit_cost');
+
+        $costQuery->when($productId, fn ($q) => $q->where('product_id', $productId));
+        $costQuery->when($categoryId, fn ($q) => $q->whereHas('product', fn ($pq) => $pq->where('category_id', $categoryId)));
+        $costQuery->when($supplierId, fn ($q) => $q->where('supplier_id', $supplierId));
+        $costQuery->when($from, fn ($q) => $q->whereDate('created_at', '>=', $from));
+        $costQuery->when($to, fn ($q) => $q->whereDate('created_at', '<=', $to));
+
+        $costs = $costQuery
+            ->latest('created_at')
+            ->paginate(15, ['*'], 'costs_page')
+            ->withQueryString();
+
+        $products = Product::where('is_active', true)->orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+        $suppliers = Supplier::active()->orderBy('name')->get();
+
+        return view('inventory.costs', compact(
+            'costs',
+            'products',
+            'categories',
+            'suppliers',
+            'productId',
+            'categoryId',
+            'supplierId',
+            'from',
+            'to',
+        ));
     }
 }

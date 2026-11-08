@@ -139,8 +139,75 @@ class SalesReportController extends Controller
             'todayTotal',
             'dailyTotals',
             'salesHistory',
+        ));
+    }
+
+    public function products(Request $request): View
+    {
+        // Validar fechas y categoría
+        $request->validate([
+            'from' => ['nullable', 'date', 'before_or_equal:today'],
+            'to' => ['nullable', 'date', 'after_or_equal:from', 'before_or_equal:today'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'q' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $from = $request->get('from', now()->startOfMonth()->toDateString());
+        $to = $request->get('to', now()->toDateString());
+        $categoryId = $request->integer('category_id') ?: null;
+        $q = trim((string) $request->get('q'));
+
+        $baseQuery = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('products', 'products.id', '=', 'sale_items.product_id');
+
+        $baseQuery->when($from, fn ($q) => $q->whereDate('sales.sold_at', '>=', $from));
+        $baseQuery->when($to, fn ($q) => $q->whereDate('sales.sold_at', '<=', $to));
+        $baseQuery->when($categoryId, fn ($q) => $q->where('products.category_id', $categoryId));
+        $baseQuery->when($q !== '', fn ($q) => $q->where('sale_items.product_name', 'like', "%{$q}%"));
+
+        $topProducts = $baseQuery
+            ->selectRaw('sale_items.product_name, SUM(sale_items.quantity) as sold_quantity, SUM(sale_items.line_total) as total_amount')
+            ->whereDate('sales.sold_at', '>=', $from)
+            ->whereDate('sales.sold_at', '<=', $to)
+            ->groupBy('sale_items.product_name')
+            ->orderByDesc('total_amount')
+            ->limit(10)
+            ->get();
+
+        $categories = Category::orderBy('name')->get();
+
+        return view('reports.products', compact(
+            'from',
+            'to',
+            'categoryId',
+            'q',
+            'categories',
             'topProducts',
+        ));
+    }
+
+    public function expiring(Request $request): View
+    {
+        $from = $request->get('from', now()->startOfDay()->timestamp);
+        $to = now()->startOfDay()->timestamp + 86400 * 10;
+
+        $expiringBatches = ProductBatch::with(['product', 'supplier'])
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '>=', $from)
+            ->where('expires_at', '<=', $to)
+            ->where('remaining_quantity', '>', 0)
+            ->latest('expires_at')
+            ->paginate(20, ['*'], 'expiring_page')
+            ->withQueryString();
+
+        $suppliers = Supplier::active()->orderBy('name')->get();
+
+        return view('reports.expiring', compact(
             'expiringBatches',
+            'suppliers',
+            'from',
+            'to',
         ));
     }
 }

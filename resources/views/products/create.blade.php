@@ -23,6 +23,9 @@
                 },
                 removePresentation(i) {
                     this.presentations.splice(i, 1);
+                },
+                addPreset(name, units) {
+                    this.presentations.push({ name: name, units: units, price: '' });
                 }
               }">
             @csrf
@@ -96,15 +99,20 @@
 
             {{-- Presentaciones múltiples (solo unidades) --}}
             <div x-show="typeKey === 'unit'" x-cloak>
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="field-label" style="margin:0">Presentaciones de venta</p>
-                        <p class="field-help">Opciones como medio maple, maple, caja, docena, etc. Se muestran en el POS al lado de "Unidad".</p>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="field-label" style="margin:0">Presentaciones de venta</p>
+                            <p class="field-help">Opciones como medio maple, maple, caja, docena, etc. Se muestran en el POS al lado de "Unidad".</p>
+                        </div>
+                        <div class="flex gap-2 sm:flex-wrap">
+                            <button type="button" class="btn-secondary flex-1 sm:auto" @click="addPreset('Paquete', 1)">Paquete</button>
+                            <button type="button" class="btn-secondary flex-1 sm:auto" @click="addPreset('Medio maple', 1)">Medio maple</button>
+                            <button type="button" class="btn-secondary flex-1 sm:auto" @click="addPreset('Maple', 1)">Maple</button>
+                            <button type="button" class="btn-secondary" @click="addPresentation()">
+                                + Agregar presentación
+                            </button>
+                        </div>
                     </div>
-                    <button type="button" class="btn-secondary" @click="addPresentation()">
-                        + Agregar presentación
-                    </button>
-                </div>
 
                 @error('presentations') <p class="text-sm text-red-600 mt-2">{{ $message }}</p> @enderror
 

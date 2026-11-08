@@ -9,6 +9,8 @@
         </div>
     </x-slot>
 
+    <x-report-tabs />
+
     <div class="space-y-6">
         <div class="shell-panel-strong p-4">
             <form method="GET" class="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
@@ -34,7 +36,7 @@
             </form>
         </div>
 
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <article class="metric-card">
                 <p class="metric-label">Total del periodo</p>
                 <p class="metric-value">Bs. {{ number_format($totalSalesAmount, 2) }}</p>
@@ -60,7 +62,7 @@
             </article>
         </section>
 
-        <section class="grid gap-6 xl:grid-cols-2">
+        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div class="table-card">
                 <div class="table-toolbar">
                     <div>
@@ -144,80 +146,6 @@
 
                 <div class="table-footer">
                     {{ $salesHistory->links() }}
-                </div>
-            </div>
-        </section>
-
-        <section class="grid gap-6 xl:grid-cols-2">
-            <div class="table-card">
-                <div class="table-toolbar">
-                    <div>
-                        <p class="section-kicker">Ranking</p>
-                        <h3 class="mt-1 text-lg font-bold text-slate-900">Productos más vendidos</h3>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="table-shell">
-                        <thead class="table-head">
-                            <tr>
-                                <th class="table-head-cell">Producto</th>
-                                <th class="table-head-cell">Cantidad</th>
-                                <th class="table-head-cell">Importe</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($topProducts as $product)
-                                <tr class="table-row">
-                                    <td class="table-cell font-semibold text-slate-900">{{ $product->product_name }}</td>
-                                    <td class="table-cell">{{ rtrim(rtrim(number_format((float) $product->sold_quantity, 3, '.', ''), '0'), '.') }}</td>
-                                    <td class="table-cell">Bs. {{ number_format((float) $product->total_amount, 2) }}</td>
-                                </tr>
-                            @empty
-                                <tr class="table-row">
-                                    <td colspan="3" class="empty-state">Aun no hay productos vendidos en el rango elegido.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="table-card">
-                <div class="table-toolbar">
-                    <div>
-                        <p class="section-kicker">Alertas</p>
-                        <h3 class="mt-1 text-lg font-bold text-slate-900">Productos por vencer</h3>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="table-shell">
-                        <thead class="table-head">
-                        <tr>
-                            <th class="table-head-cell">Producto</th>
-                            <th class="table-head-cell">Fecha</th>
-                            <th class="table-head-cell">Días</th>
-                            <th class="table-head-cell">Saldo</th>
-                            <th class="table-head-cell">Proveedor</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($expiringBatches as $batch)
-                                <tr class="table-row">
-                                    <td class="table-cell font-semibold text-slate-900">{{ $batch->product?->name }}</td>
-                                    <td class="table-cell">{{ $batch->expires_at?->format('d/m/Y') }}</td>
-                                    <td class="table-cell">{{ max(0, (int) $batch->expires_at?->diffInDays(now())) }}</td>
-                                    <td class="table-cell">{{ $batch->remaining_quantity }}</td>
-                                    <td class="table-cell">{{ $batch->supplier_name ?: '-' }}</td>
-                                </tr>
-                            @empty
-                                <tr class="table-row">
-                                    <td colspan="4" class="empty-state">No hay productos cercanos a vencer.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </section>

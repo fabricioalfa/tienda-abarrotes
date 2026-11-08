@@ -14,9 +14,11 @@
     </x-slot>
 
     <div class="space-y-6">
-        @if (session('status'))
-            <div class="notice-success">{{ session('status') }}</div>
-        @endif
+@if (session('status'))
+    <div class="notice-success">{{ session('status') }}</div>
+@endif
+
+@include('components.inventory-tabs')
 
         <form method="GET" class="form-card flex flex-col gap-3 sm:flex-row sm:items-end">
             <select name="product_id" class="field-input sm:flex-1 sm:min-w-[200px]">
@@ -42,8 +44,8 @@
                 <table class="table-shell">
                     <thead class="table-head">
                         <tr>
-                            <th class="table-head-cell">Fecha</th>
                             <th class="table-head-cell">Producto</th>
+                            <th class="table-head-cell">Fecha</th>
                             <th class="table-head-cell">Movimiento</th>
                             <th class="table-head-cell">Proveedor</th>
                             <th class="table-head-cell">Dirección</th>
@@ -55,8 +57,8 @@
                     <tbody>
                         @forelse ($movements as $movement)
                             <tr class="table-row">
-                                <td class="table-cell text-slate-500">{{ $movement->created_at->format('d/m/Y H:i') }}</td>
                                 <td class="table-cell font-semibold text-slate-900">{{ $movement->product?->name }}</td>
+                                <td class="table-cell text-slate-500">{{ $movement->created_at->format('d/m/Y H:i') }}</td>
                                 <td class="table-cell">{{ $movement->typeLabel() }}</td>
                                 <td class="table-cell text-slate-500">{{ $movement->supplier?->name ?? '-' }}</td>
                                 <td class="table-cell text-xs">{{ $movement->directionLabel() }}</td>

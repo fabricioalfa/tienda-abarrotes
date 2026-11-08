@@ -124,14 +124,14 @@ class Product extends Model
 
     /**
      * Multiplicadores de las unidades de venta para productos en libras.
-     * Cuartilla = 6 lb, Arroba = 24 lb.
+     * Cuartilla = 6 lb, Arroba = 25 lb.
      */
     public static function poundSaleUnits(): array
     {
         return [
             'lb' => ['label' => 'Libra', 'factor' => 1],
             'cuartilla' => ['label' => 'Cuartilla (6 lb)', 'factor' => 6],
-            'arroba' => ['label' => 'Arroba (24 lb)', 'factor' => 24],
+            'arroba' => ['label' => 'Arroba (25 lb)', 'factor' => 25],
         ];
     }
 

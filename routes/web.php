@@ -53,6 +53,22 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,caja')
         ->name('inventory.sales.store');
 
+    Route::get('/inventory/expiring', [InventoryController::class, 'expiring'])
+        ->middleware('role:admin,caja')
+        ->name('inventory.expiring');
+
+    Route::get('/inventory/costs', [InventoryController::class, 'costs'])
+        ->middleware('role:admin,caja')
+        ->name('inventory.costs');
+
+    Route::get('/reports/products', [SalesReportController::class, 'products'])
+        ->middleware('role:admin,caja')
+        ->name('reports.products');
+
+    Route::get('/reports/expiring', [SalesReportController::class, 'expiring'])
+        ->middleware('role:admin,caja')
+        ->name('reports.expiring');
+
     Route::get('/sales', [SaleController::class, 'index'])
         ->middleware('role:admin,caja')
         ->name('sales.index');

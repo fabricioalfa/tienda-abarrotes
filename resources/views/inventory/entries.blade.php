@@ -14,13 +14,15 @@
     </x-slot>
 
     <div class="space-y-6">
-        @if (session('status'))
-            <div class="notice-success">{{ session('status') }}</div>
-        @endif
+@if (session('status'))
+    <div class="notice-success">{{ session('status') }}</div>
+@endif
 
-        @if (session('error'))
-            <div class="notice-error">{{ session('error') }}</div>
-        @endif
+@if (session('error'))
+    <div class="notice-error">{{ session('error') }}</div>
+@endif
+
+@include('components.inventory-tabs')
 
         @if ($errors->any())
             <div class="notice-error">

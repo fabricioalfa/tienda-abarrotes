@@ -19,13 +19,15 @@ class SaleController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'q' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
         $q = trim((string) $request->get('q'));
         $from = $request->get('from');
         $to = $request->get('to');
+        $categoryId = $request->integer('category_id') ?: null;
 
-        $sales = Sale::with(['user'])
+        $sales = Sale::with(['user', 'items'])
             ->withCount('items')
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($subQuery) use ($q) {
@@ -35,6 +37,9 @@ class SaleController extends Controller
             })
             ->when($from, fn ($query) => $query->whereDate('sold_at', '>=', $from))
             ->when($to, fn ($query) => $query->whereDate('sold_at', '<=', $to))
+            ->when($categoryId, function ($query) use ($categoryId) {
+                $query->whereHas('items', fn ($subQuery) => $subQuery->whereHas('product', fn ($pq) => $pq->where('category_id', $categoryId)));
+            })
             ->latest('sold_at')
             ->paginate(12)
             ->withQueryString();
@@ -42,8 +47,9 @@ class SaleController extends Controller
         $todaySales = Sale::whereDate('sold_at', now()->toDateString())->count();
         $todayTotal = (float) Sale::whereDate('sold_at', now()->toDateString())->sum('total');
         $currentRegister = CashRegister::current();
+        $categories = App\Models\Category::orderBy('name')->get();
 
-        return view('sales.index', compact('sales', 'q', 'from', 'to', 'todaySales', 'todayTotal', 'currentRegister'));
+        return view('sales.index', compact('sales', 'q', 'from', 'to', 'categoryId', 'todaySales', 'todayTotal', 'currentRegister', 'categories'));
     }
 
     public function create()

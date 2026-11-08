@@ -154,17 +154,18 @@ test('admin can register product with code barcode category and quarter price', 
     $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
     $category = Category::create(['name' => 'Carniceria']);
 
-    $response = $this
-        ->actingAs($admin)
-        ->post(route('products.store'), [
-            'name' => 'Carne especial',
-            'barcode' => '77990011',
-            'category_id' => $category->id,
-            'type_key' => 'quarter',
-            'price' => 18.50,
-            'initial_stock' => 4,
-            'is_active' => 1,
-        ]);
+$response = $this
+    ->actingAs($admin)
+    ->post(route('products.store'), [
+        'name' => 'Carne especial',
+        'barcode' => '77990011',
+        'category_id' => $category->id,
+        'type_key' => 'quarter',
+        'weight_unit' => 'quarter',
+        'price' => 18.50,
+        'initial_stock' => 4,
+        'is_active' => 1,
+    ]);
 
     $response->assertSessionHasNoErrors();
 
@@ -260,12 +261,12 @@ test('admin can open the inventory dashboard with movements list', function () {
         ->actingAs($admin)
         ->get(route('inventory.index'))
         ->assertOk()
-        ->assertSee('Chuleta')
-        ->assertSee('Historial de movimientos');
+        ->assertSee('Chuleta');
 
     $this
         ->actingAs($admin)
         ->get(route('inventory.movements'))
         ->assertOk()
-        ->assertSee('Chuleta');
+        ->assertSee('Chuleta')
+        ->assertSee('Historial de movimientos');
 });

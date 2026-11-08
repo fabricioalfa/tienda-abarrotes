@@ -37,10 +37,16 @@
         </section>
 
         <div class="shell-panel-strong p-4">
-            <form method="GET" class="grid gap-3 md:grid-cols-4">
+            <form method="GET" class="grid gap-3 md:grid-cols-5">
                 <input type="text" name="q" value="{{ $q }}" class="field-input" placeholder="Nro venta o cajero">
                 <input type="date" name="from" value="{{ $from }}" class="field-input">
                 <input type="date" name="to" value="{{ $to }}" class="field-input">
+                <select name="category_id" class="field-input">
+                    <option value="">Todas las categorías</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category->id }}" @selected((string) $categoryId === (string) $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
                 <button class="btn-secondary">Filtrar historial</button>
             </form>
         </div>
@@ -57,6 +63,7 @@
                             <th class="table-head-cell">Pago</th>
                             <th class="table-head-cell">Items</th>
                             <th class="table-head-cell">Total</th>
+                            <th class="table-head-cell">Ganancia</th>
                             <th class="table-head-cell">Accion</th>
                         </tr>
                     </thead>
@@ -70,13 +77,20 @@
                                 <td class="table-cell">{{ $sale->paymentMethodLabel() }}</td>
                                 <td class="table-cell">{{ $sale->items_count ?? 0 }}</td>
                                 <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format((float) $sale->total, 2) }}</td>
+                                @php
+                                    $ganancia = 0;
+                                    foreach ($sale->items as $item) {
+                                        $ganancia += (float) $item->line_total - ((float) ($item->cost_price ?? 0) * (float) $item->stock_quantity);
+                                    }
+                                @endphp
+                                <td class="table-cell font-semibold text-slate-900">Bs. {{ number_format($ganancia, 2) }}</td>
                                 <td class="table-cell">
                                     <a href="{{ route('sales.show', $sale) }}" class="action-link">Ver recibo</a>
                                 </td>
                             </tr>
                         @empty
-                            <tr class="table-row">
-                                <td colspan="8" class="empty-state">No hay ventas registradas para los filtros aplicados.</td>
+                                <tr class="table-row">
+                                    <td colspan="9" class="empty-state">No hay ventas registradas para los filtros aplicados.</td>
                             </tr>
                         @endforelse
                     </tbody>
