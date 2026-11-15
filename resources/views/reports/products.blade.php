@@ -11,49 +11,23 @@
 
     <x-report-tabs />
 
-    <div class="space-y-6">
-        <div class="shell-panel-strong p-4">
-            <form method="GET" class="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
-                <input type="date" name="from" value="{{ $from }}" class="field-input">
-                <input type="date" name="to" value="{{ $to }}" class="field-input">
-                <select name="category_id" class="field-input">
-                    <option value="">Todas las categorías</option>
-                    @foreach ($categories as $category)
-                        <option value="{{ $category->id }}" @selected((string) $categoryId === (string) $category->id)>{{ $category->name }}</option>
-                    @endforeach
-                </select>
-                <input type="text" name="q" value="{{ $q }}" class="field-input" placeholder="Producto">
-                <button class="btn-secondary">Actualizar reporte</button>
-            </form>
-        </div>
+        <div class="space-y-6">
+            <div class="shell-panel-strong p-4">
+                <form method="GET" class="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
+                    <input type="date" name="from" value="{{ $from }}" class="field-input">
+                    <input type="date" name="to" value="{{ $to }}" class="field-input">
+                    <select name="category_id" class="field-input">
+                        <option value="">Todas las categorías</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" @selected((string) $categoryId === (string) $category->id)>{{ $category->name }}</option>
+                        @endforeach
+                    </select>
+                    <input type="text" name="q" value="{{ $q }}" class="field-input" placeholder="Producto">
+                    <button class="btn-secondary">Actualizar reporte</button>
+                </form>
+            </div>
 
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <article class="metric-card">
-                <p class="metric-label">Total del periodo</p>
-                <p class="metric-value">Bs. {{ number_format($totalSalesAmount, 2) }}</p>
-                <p class="metric-meta">Suma de ventas entre fechas.</p>
-            </article>
-
-            <article class="metric-card">
-                <p class="metric-label">Cantidad de ventas</p>
-                <p class="metric-value">{{ $totalSalesCount }}</p>
-                <p class="metric-meta">Transacciones registradas.</p>
-            </article>
-
-            <article class="metric-card">
-                <p class="metric-label">Ticket promedio</p>
-                <p class="metric-value">Bs. {{ number_format($averageTicket, 2) }}</p>
-                <p class="metric-meta">Promedio por venta.</p>
-            </article>
-
-            <article class="metric-card">
-                <p class="metric-label">Total de hoy</p>
-                <p class="metric-value">Bs. {{ number_format($todayTotal, 2) }}</p>
-                <p class="metric-meta">Acumulado del dia actual.</p>
-            </article>
-        </div>
-
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div class="table-card">
                 <div class="table-toolbar">
                     <div>
