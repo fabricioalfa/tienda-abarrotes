@@ -254,11 +254,14 @@ class InventoryController extends Controller
 
         $suppliers = Supplier::active()->orderBy('name')->get();
 
+        $products = Product::where('is_active', true)->orderBy('name')->get();
+
         return view('inventory.expiring', compact(
             'expiringBatches',
             'suppliers',
             'from',
             'to',
+            'products',
         ));
     }
 
