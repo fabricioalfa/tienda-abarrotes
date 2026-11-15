@@ -273,7 +273,7 @@ class InventoryController extends Controller
         $from = $request->get('from');
         $to = $request->get('to');
 
-        $costQuery = ProductBatch::with(['product', 'supplier'])
+        $costQuery = ProductBatch::with(['product.category', 'supplier'])
             ->whereNotNull('unit_cost');
 
         $costQuery->when($productId, fn ($q) => $q->where('product_id', $productId));

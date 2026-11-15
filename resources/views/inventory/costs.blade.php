@@ -82,7 +82,7 @@
                         <tr class="table-row">
                             <td class="table-cell font-semibold text-slate-900">{{ $cost->product?->name }}</td>
                             <td class="table-cell">{{ $cost->created_at->format('d/m/Y') }}</td>
-                            <td class="table-cell">{{ $cost->product?->getRelation('category')?->name ?? $cost->product->category ?? '-' }}</td>
+                            <td class="table-cell">{{ $cost->product->category?->name ?? '-' }}</td>
                             <td class="table-cell">{{ $cost->supplier?->name ?: '-' }}</td>
                             <td class="table-cell">Bs. {{ number_format((float) $cost->unit_cost, 2) }}</td>
                             <td class="table-cell">{{ $cost->quantity }}</td>
