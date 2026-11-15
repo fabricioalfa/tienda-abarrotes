@@ -236,6 +236,8 @@ class InventoryController extends Controller
 
     public function expiring(Request $request)
     {
+        $productId = $request->integer('product_id') ?: null;
+        $supplierId = $request->integer('supplier_id') ?: null;
         $days = (int) floor(
             ($request->get('from', now()->startOfDay()->timestamp)
              - now()->startOfDay()->timestamp) / 86400
@@ -248,6 +250,8 @@ class InventoryController extends Controller
             ->where('expires_at', '>=', $from)
             ->where('expires_at', '<=', $to)
             ->where('remaining_quantity', '>', 0)
+            ->when($productId, fn ($q) => $q->where('product_id', $productId))
+            ->when($supplierId, fn ($q) => $q->where('supplier_id', $supplierId))
             ->latest('expires_at')
             ->paginate(20, ['*'], 'expiring_page')
             ->withQueryString();
@@ -262,6 +266,8 @@ class InventoryController extends Controller
             'from',
             'to',
             'products',
+            'productId',
+            'supplierId',
         ));
     }
 

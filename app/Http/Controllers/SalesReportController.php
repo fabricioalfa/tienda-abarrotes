@@ -190,6 +190,8 @@ class SalesReportController extends Controller
 
     public function expiring(Request $request)
     {
+        $productId = $request->integer('product_id') ?: null;
+        $supplierId = $request->integer('supplier_id') ?: null;
         $from = $request->get('from', now()->startOfDay()->timestamp);
         $to = now()->startOfDay()->timestamp + 86400 * 10;
 
@@ -198,6 +200,8 @@ class SalesReportController extends Controller
             ->where('expires_at', '>=', $from)
             ->where('expires_at', '<=', $to)
             ->where('remaining_quantity', '>', 0)
+            ->when($productId, fn ($q) => $q->where('product_id', $productId))
+            ->when($supplierId, fn ($q) => $q->where('supplier_id', $supplierId))
             ->latest('expires_at')
             ->paginate(20, ['*'], 'expiring_page')
             ->withQueryString();
@@ -212,6 +216,8 @@ class SalesReportController extends Controller
             'from',
             'to',
             'products',
+            'productId',
+            'supplierId',
         ));
     }
 }
