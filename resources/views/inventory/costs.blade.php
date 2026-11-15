@@ -9,6 +9,9 @@
         </div>
     </x-slot>
 
+    {{-- Componentes de tabs --}}
+    @include('components.inventory-tabs')
+
     <div class="space-y-6">
         @if (session('status'))
             <div class="notice-success">{{ session('status') }}</div>
